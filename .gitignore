@@ -1,0 +1,24 @@
+# =============================================================
+# Stream Assistant - .gitignore
+# Files that must NEVER be committed to Git
+# =============================================================
+
+# --- Secret credentials (NEVER commit these) ---
+ai-computer/credentials/.env
+ai-computer/credentials/google_sheets.json
+
+# --- Runtime folders (not needed in repo) ---
+ai-computer/captures/
+ai-computer/logs/
+gaming-pc/logs/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# --- Windows ---
+Thumbs.db
+Desktop.ini
