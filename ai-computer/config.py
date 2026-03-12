@@ -29,7 +29,7 @@ ANTHROPIC_MODEL         = "claude-sonnet-4-6"
 
 # --- Google Sheets ---
 SHEETS_CREDENTIALS      = r"C:\StreamAssistant\ai-computer\credentials\google_sheets.json"
-SHEETS_SPREADSHEET_ID   = "your-spreadsheet-id-here"   # paste your Sheet ID
+SHEETS_SPREADSHEET_ID   = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"   # paste your Sheet ID
 RESULTS_TAB             = "Results"
 OPPONENTS_TAB           = "Opponents"
 

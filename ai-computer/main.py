@@ -26,13 +26,11 @@ log_file = os.path.join(LOGS_FOLDER, "stream_assistant.log")
 handler  = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3)
 handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[
-        handler,
-        logging.StreamHandler()     # Also print to console
-    ]
-)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(handler)
+root_logger.addHandler(logging.StreamHandler())
+
 log = logging.getLogger(__name__)
 
 

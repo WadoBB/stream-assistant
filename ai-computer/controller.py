@@ -18,6 +18,7 @@ from flask import Flask, jsonify
 from config import CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER
 
 MAIN_SCRIPT = r"C:\StreamAssistant\ai-computer\main.py"
+PYTHON_EXE = r"C:\Users\benny\AppData\Local\Programs\Python\Python313\python.exe"
 
 # =============================================================
 # Logging - rotating file, max 5MB, keep 3 backups
@@ -77,7 +78,8 @@ def toggle():
             log.info("Starting pipeline...")
             try:
                 pipeline_process = subprocess.Popen(
-                    ["python", MAIN_SCRIPT],
+                    [PYTHON_EXE, MAIN_SCRIPT],
+                    cwd=r"C:\StreamAssistant\ai-computer",
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
                 log.info(f"Pipeline started (PID: {pipeline_process.pid})")
