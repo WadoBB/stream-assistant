@@ -6,7 +6,11 @@
 :: controller.py auto-starts with Windows on AI computer.
 :: =============================================================
 
+:: Kill any leftover Capture Agent first regardless of state
+taskkill /f /im python.exe > nul 2>&1
+
 :: Check current state from controller
+set RESPONSE=
 for /f "tokens=*" %%i in ('curl -s --max-time 5 http://192.168.137.230:5000/status') do set RESPONSE=%%i
 
 :: Check if stopped or running
@@ -14,7 +18,7 @@ echo %RESPONSE% | find "stopped" > nul
 if not errorlevel 1 (
     :: CURRENTLY STOPPED - START EVERYTHING
     echo Starting Stream Assistant...
-    start "Capture Agent" cmd /k "cd C:\StreamAssistant\gaming-pc && python capture_agent.py"
+    start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && python capture_agent.py"
     curl -s http://192.168.137.230:5000/toggle > nul
     echo Stream Assistant STARTED
     exit /b 0
@@ -25,7 +29,7 @@ if not errorlevel 1 (
     :: CURRENTLY RUNNING - STOP EVERYTHING
     echo Stopping Stream Assistant...
     curl -s http://192.168.137.230:5000/toggle > nul
-    taskkill /fi "WINDOWTITLE eq Capture Agent" /f > nul 2>&1
+    taskkill /f /im python.exe > nul 2>&1
     echo Stream Assistant STOPPED
     exit /b 0
 )
