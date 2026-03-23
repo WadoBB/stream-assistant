@@ -119,6 +119,36 @@ During install, check **Add Python to PATH**.
 
 Verify: `python --version`
 
+**If `python` opens the Microsoft Store instead of showing a version number:**
+
+Windows sometimes installs a stub that redirects to the Store. Fix it:
+1. Open **Settings → Apps → Advanced app settings → App execution aliases**
+2. Turn OFF both **Python** and **Python3** aliases
+3. Open a **new** Command Prompt and try `python --version` again
+
+**If Python still isn't found after disabling the alias:**
+
+Locate it manually:
+```
+where python
+```
+Or check this common non-standard install location:
+```
+dir C:\Users\%USERNAME%\AppData\Local\Python\bin\
+```
+If found there, note the full path (e.g. `C:\Users\Benny\AppData\Local\Python\bin\python.exe`)
+and use it anywhere these instructions say `python`.
+
+You will also need to update `toggle_stream_assistant.bat` to use the full path.
+Find this line:
+```
+start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && python capture_agent.py"
+```
+Replace `python` with the full path:
+```
+start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && C:\Users\Benny\AppData\Local\Python\bin\python.exe capture_agent.py"
+```
+
 ---
 
 ### Step 2 — Create Base Folders
@@ -228,10 +258,32 @@ Settings → HUD and Gameplay → Data Out:
 
 ### Step 8 — Set Up Windows Shared Folder (AI computer)
 
-1. Right-click `C:\StreamAssistant\ai-computer\captures\` → Properties → Sharing → Share
-2. Share name: `StreamCaptures`
-3. Give the gaming PC user Read/Write access
-4. From gaming PC, verify: navigate to `\\192.168.137.230\StreamCaptures\` in File Explorer
+1. Right-click `C:\StreamAssistant\ai-computer\captures\` → Properties → Sharing → Advanced Sharing
+2. Check **Share this folder**
+3. Share name: `StreamCaptures`
+4. Click **Permissions** → give Everyone Read/Write access
+5. Click OK and Apply
+
+**Map as a network drive on the Gaming PC (recommended)**
+
+Mapping as Z: makes it easy to verify the connection is working at any time
+and ensures the Gaming PC can reliably write screenshots to the AI computer.
+
+1. On the Gaming PC, open File Explorer → click **This PC** in the left panel
+2. Click **Map network drive** in the toolbar
+3. Drive letter: **Z:**
+4. Folder: `\\192.168.137.230\StreamCaptures`
+5. Check **Reconnect at sign-in**
+6. Click **Finish** — it should open the folder automatically
+
+If prompted for credentials, enter the username and password of the account
+on the AI computer.
+
+Verify from Gaming PC Command Prompt:
+```
+dir Z:\
+```
+Should list the contents of the captures folder without error.
 
 ---
 
