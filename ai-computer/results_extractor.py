@@ -28,7 +28,7 @@ RACE_TYPE_MAP = [
     ("CROSS COUNTRY CIRCUIT",   "Cross-Country Circuit",    True),
     ("CROSS COUNTRY",           "Cross-Country",            False),
     ("SCRAMBLE",                "Dirt Circuit",             True),
-    ("TRAIL",                   "Dirt Point to Point",      False),
+    ("TRAIL",                   "Dirt Trail",               False),
     ("CIRCUIT",                 "Road Circuit",             True),
     ("SPRINT",                  "Road Sprint",              False),
 ]
