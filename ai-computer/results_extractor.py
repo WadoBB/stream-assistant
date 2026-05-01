@@ -28,7 +28,7 @@ RACE_TYPE_MAP = [
     ("CROSS COUNTRY CIRCUIT",   "Cross-Country Circuit",    True),
     ("CROSS COUNTRY",           "Cross-Country",            False),
     ("SCRAMBLE",                "Dirt Circuit",             True),
-    ("TRAIL",                   "Dirt Trail",               False),
+    ("TRAIL",                   "Dirt Point to Point",      False),
     ("CIRCUIT",                 "Road Circuit",             True),
     ("SPRINT",                  "Road Sprint",              False),
 ]
@@ -267,6 +267,7 @@ class ResultsExtractor:
             files = [
                 f for f in os.listdir(CAPTURES_FOLDER)
                 if f.endswith(".png") and
+                not f.startswith("_tmp_") and
                 os.path.isfile(os.path.join(CAPTURES_FOLDER, f))
             ]
         except Exception as e:

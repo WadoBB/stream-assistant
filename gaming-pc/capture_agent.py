@@ -83,13 +83,17 @@ def detect_scoreboard(screen_bgr):
 def capture_scoreboard(race_id):
     """
     Take a full screenshot and save to the shared network folder.
+    Writes to a temp file first, then renames atomically so the
+    results extractor never sees a partially-written file.
     Returns the saved file path or None on failure.
     """
     try:
         screen = ImageGrab.grab()
         filename = f"scoreboard_{race_id}.png"
         filepath = os.path.join(SHARED_FOLDER, filename)
-        screen.save(filepath)
+        temp_filepath = os.path.join(SHARED_FOLDER, f"_tmp_{filename}")
+        screen.save(temp_filepath)
+        os.rename(temp_filepath, filepath)
         log.info(f"Scoreboard captured: {filename}")
         return filepath
     except Exception as e:
