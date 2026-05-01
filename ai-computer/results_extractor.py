@@ -196,12 +196,12 @@ Rules:
             "track":        track,
             "total_racers": my.get("total_racers"),
             "best_lap":     telemetry_summary.get("best_lap")  if lap_based else "",
-            "race_time":    telemetry_summary.get("race_time"),
+            "race_time":    my.get("race_time") or telemetry_summary.get("race_time"),
             "notes":        ""
         }
 
         my_position     = my.get("position", 99)
-        my_race_time    = telemetry_summary.get("race_time") or my.get("race_time")
+        my_race_time    = my.get("race_time") or telemetry_summary.get("race_time")
         opponents       = []
 
         for opp in data.get("opponents_ahead", []):
