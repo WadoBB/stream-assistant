@@ -9,7 +9,7 @@ import logging
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from config import SHEETS_CREDENTIALS, SHEETS_SPREADSHEET_ID, RESULTS_TAB, OPPONENTS_TAB
+from config import SHEETS_CREDENTIALS, FH5_SPREADSHEET_ID, FH6_SPREADSHEET_ID, RESULTS_TAB, OPPONENTS_TAB
 
 # Column order must match your sheet headers exactly
 RESULTS_COLUMNS = [
@@ -31,8 +31,9 @@ class SheetsWriter:
     Appends race results and opponent rows to the appropriate tabs.
     """
 
-    def __init__(self):
-        self.service = self._build_service()
+    def __init__(self, game_version="FH5"):
+        self.spreadsheet_id = FH5_SPREADSHEET_ID if game_version == "FH5" else FH6_SPREADSHEET_ID
+        self.service        = self._build_service()
 
     def _build_service(self):
         """Authenticate and build the Google Sheets API service."""
@@ -67,7 +68,7 @@ class SheetsWriter:
 
         try:
             self.service.spreadsheets().values().append(
-                spreadsheetId=SHEETS_SPREADSHEET_ID,
+                spreadsheetId=self.spreadsheet_id,
                 range=f"{RESULTS_TAB}!A:K",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
@@ -95,7 +96,7 @@ class SheetsWriter:
 
         try:
             self.service.spreadsheets().values().append(
-                spreadsheetId=SHEETS_SPREADSHEET_ID,
+                spreadsheetId=self.spreadsheet_id,
                 range=f"{OPPONENTS_TAB}!A:J",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",

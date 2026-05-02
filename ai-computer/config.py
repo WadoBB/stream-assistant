@@ -3,10 +3,6 @@
 # AI COMPUTER only - do not copy to gaming PC
 # =============================================================
 
-# --- Game Version ---
-# Change to "FH6" when switching to Forza Horizon 6
-GAME_VERSION            = "FH5"
-
 # --- Network Settings ---
 AI_COMPUTER_IP          = "192.168.137.230"
 GAMING_PC_IP            = "192.168.137.63"
@@ -33,7 +29,8 @@ ANTHROPIC_MODEL         = "claude-sonnet-4-6"
 
 # --- Google Sheets ---
 SHEETS_CREDENTIALS      = r"C:\StreamAssistant\ai-computer\credentials\google_sheets.json"
-SHEETS_SPREADSHEET_ID   = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"   # paste your Sheet ID
+FH5_SPREADSHEET_ID      = "1Kk7Z35YZJQn9ZdkBl5-_Eso_nzKXxCmauszChrME9hE"   # Forza Horizon 5
+FH6_SPREADSHEET_ID      = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"   # Forza Horizon 6
 RESULTS_TAB             = "Results"
 OPPONENTS_TAB           = "Opponents"
 

@@ -15,7 +15,7 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from config import TELEMETRY_PORT, LOGS_FOLDER, GAME_VERSION
+from config import TELEMETRY_PORT, LOGS_FOLDER
 
 # =============================================================
 # Logging - rotating file, max 5MB, keep 3 backups
@@ -64,9 +64,9 @@ DRIVETRAIN_NAMES = {
 }
 
 
-def pi_to_class(pi):
+def pi_to_class(pi, game_version="FH5"):
     """Derive car class letter from PI value. Ranges differ between FH5 and FH6."""
-    if GAME_VERSION == "FH6":
+    if game_version == "FH6":
         if pi <= 100:   return "E"
         if pi <= 400:   return "D"
         if pi <= 500:   return "C"
@@ -86,7 +86,7 @@ def pi_to_class(pi):
         return "X"
 
 
-def parse_packet(data):
+def parse_packet(data, game_version="FH5"):
     """
     Parse raw UDP bytes from FH5/FH6.
     Returns dict of values, or None if packet is too short.
@@ -121,7 +121,7 @@ def parse_packet(data):
             "position":     position,
             "speed_mph":    speed_ms * 2.237,
             "car_ordinal":  car_ordinal,
-            "car_class":    pi_to_class(car_pi),
+            "car_class":    pi_to_class(car_pi, game_version),
             "car_pi":       car_pi,
             "drivetrain":   DRIVETRAIN_NAMES.get(drivetrain, f"?({drivetrain})"),
             "gear":         gear,
@@ -147,7 +147,8 @@ class TelemetryListener:
     Calls on_race_end(summary) only for valid completed races.
     """
 
-    def __init__(self, on_race_end=None):
+    def __init__(self, game_version="FH5", on_race_end=None):
+        self.game_version       = game_version
         self.on_race_end        = on_race_end
         self.last_race_end_time = 0
         self.last_packet_time   = None
@@ -201,7 +202,7 @@ class TelemetryListener:
 
     def _handle_packet(self, data):
         """Process one incoming UDP packet."""
-        t = parse_packet(data)
+        t = parse_packet(data, self.game_version)
         if t is None:
             return
 
@@ -344,5 +345,5 @@ if __name__ == "__main__":
         for key, value in summary.items():
             print(f"    {key:20s}: {value}")
 
-    listener = TelemetryListener(on_race_end=test_callback)
+    listener = TelemetryListener(game_version="FH5", on_race_end=test_callback)
     listener.start()

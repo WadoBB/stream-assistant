@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from config import CAPTURES_FOLDER, PROCESSED_FOLDER, LOGS_FOLDER, GAME_VERSION
+from config import CAPTURES_FOLDER, PROCESSED_FOLDER, LOGS_FOLDER
 
 # =============================================================
 # Configuration
@@ -93,7 +93,7 @@ def image_to_base64(image_path):
         return base64.standard_b64encode(f.read()).decode("utf-8")
 
 
-def extract_results(client, image_path, race_id, telemetry_summary):
+def extract_results(client, image_path, race_id, telemetry_summary, game_version="FH5"):
     """
     Send scoreboard screenshot to Claude API and extract structured data.
     Combines with telemetry summary for complete race record.
@@ -104,7 +104,7 @@ def extract_results(client, image_path, race_id, telemetry_summary):
     image_data = image_to_base64(image_path)
 
     track_name_hint = (
-        "exact text from black box at top"      if GAME_VERSION == "FH6"
+        "exact text from black box at top"      if game_version == "FH6"
         else "exact text from yellow banner at top"
     )
 
@@ -244,7 +244,8 @@ class ResultsExtractor:
     Failed extractions move to processed/ for manual review.
     """
 
-    def __init__(self, on_results_ready=None):
+    def __init__(self, game_version="FH5", on_results_ready=None):
+        self.game_version       = game_version
         self.on_results_ready   = on_results_ready
         self.client             = load_api_client()
         self.pending_telemetry  = {}
@@ -289,7 +290,7 @@ class ResultsExtractor:
 
             telemetry = self.pending_telemetry.pop(race_id, {})
             race_result, opponents = extract_results(
-                self.client, filepath, race_id, telemetry
+                self.client, filepath, race_id, telemetry, self.game_version
             )
 
             if race_result:

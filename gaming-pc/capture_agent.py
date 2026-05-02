@@ -12,6 +12,7 @@ import os
 import time
 import socket
 import logging
+import argparse
 import numpy as np
 from logging.handlers import RotatingFileHandler
 from PIL import ImageGrab
@@ -27,9 +28,15 @@ SCREEN_POLL_INTERVAL    = 0.5           # seconds between screen checks
 MAX_SCOREBOARD_WAIT     = 60            # seconds before giving up
 LOG_FILE                = r"C:\StreamAssistant\gaming-pc\logs\capture_agent.log"
 
-# --- Game Version ---
-# Change to "FH6" when switching to Forza Horizon 6
-GAME_VERSION            = "FH5"
+# --- Game Version (set by --game argument at startup) ---
+_parser = argparse.ArgumentParser(description="Stream Assistant - Capture Agent")
+_parser.add_argument(
+    "--game",
+    choices=["FH5", "FH6"],
+    default="FH5",
+    help="Game version to track (default: FH5)"
+)
+GAME_VERSION = _parser.parse_args().game
 
 # Scoreboard detection - HSV color range and screen region
 # FH5: yellow track-name banner (top-left, variable width)
@@ -147,6 +154,7 @@ class CaptureAgent:
         sock.settimeout(1.0)
 
         log.info(f"Capture Agent listening on port {CAPTURE_AGENT_PORT}")
+        log.info(f"Game version : {GAME_VERSION}")
         log.info(f"Saving captures to: {SHARED_FOLDER}")
         log.info("Waiting for race end trigger... (Ctrl+C to stop)")
 

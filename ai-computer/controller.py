@@ -14,7 +14,7 @@ import logging
 import subprocess
 import threading
 from logging.handlers import RotatingFileHandler
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from config import CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER
 
 MAIN_SCRIPT = r"C:\StreamAssistant\ai-computer\main.py"
@@ -57,8 +57,15 @@ def is_running():
 
 @app.route("/toggle", methods=["GET"])
 def toggle():
-    """Toggle the pipeline on or off."""
+    """
+    Toggle the pipeline on or off.
+    Pass ?game=FH5 or ?game=FH6 to select the game version (default: FH5).
+    """
     global pipeline_process
+
+    game = request.args.get("game", "FH5").upper()
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
 
     with pipeline_lock:
         if is_running():
@@ -75,18 +82,19 @@ def toggle():
             return jsonify({"status": "stopped", "message": "Stream Assistant stopped"})
 
         else:
-            log.info("Starting pipeline...")
+            log.info(f"Starting pipeline (game: {game})...")
             try:
                 pipeline_process = subprocess.Popen(
-                    [PYTHON_EXE, MAIN_SCRIPT],
+                    [PYTHON_EXE, MAIN_SCRIPT, "--game", game],
                     cwd=r"C:\StreamAssistant\ai-computer",
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
-                log.info(f"Pipeline started (PID: {pipeline_process.pid})")
+                log.info(f"Pipeline started (PID: {pipeline_process.pid}, game: {game})")
                 return jsonify({
                     "status":   "running",
-                    "message":  "Stream Assistant started",
-                    "pid":      pipeline_process.pid
+                    "message":  f"Stream Assistant started ({game})",
+                    "pid":      pipeline_process.pid,
+                    "game":     game
                 })
             except Exception as e:
                 log.error(f"Failed to start pipeline: {e}")
