@@ -27,14 +27,25 @@ SCREEN_POLL_INTERVAL    = 0.5           # seconds between screen checks
 MAX_SCOREBOARD_WAIT     = 60            # seconds before giving up
 LOG_FILE                = r"C:\StreamAssistant\gaming-pc\logs\capture_agent.log"
 
-# Scoreboard detection - yellow banner HSV color range
-BANNER_COLOR_LOW        = np.array([20,  150, 150])
-BANNER_COLOR_HIGH       = np.array([35,  255, 255])
+# --- Game Version ---
+# Change to "FH6" when switching to Forza Horizon 6
+GAME_VERSION            = "FH5"
 
-# Screen region where banner appears (as fraction of screen size)
-BANNER_REGION_X         = (0.05, 0.45)  # 5% to 45% of width
-BANNER_REGION_Y         = (0.10, 0.22)  # 10% to 22% of height
-BANNER_MIN_PIXELS       = 500           # minimum yellow pixels to confirm
+# Scoreboard detection - HSV color range and screen region
+# FH5: yellow track-name banner (top-left, variable width)
+# FH6: lime-green column header row (spans full table width)
+if GAME_VERSION == "FH6":
+    BANNER_COLOR_LOW    = np.array([35,  200, 180])
+    BANNER_COLOR_HIGH   = np.array([50,  255, 255])
+    BANNER_REGION_X     = (0.15, 0.85)  # green header spans full table
+    BANNER_REGION_Y     = (0.18, 0.30)  # header sits lower than FH5 banner
+    BANNER_MIN_PIXELS   = 1500          # larger region = higher threshold
+else:   # FH5
+    BANNER_COLOR_LOW    = np.array([20,  150, 150])
+    BANNER_COLOR_HIGH   = np.array([35,  255, 255])
+    BANNER_REGION_X     = (0.05, 0.45)  # 5% to 45% of width
+    BANNER_REGION_Y     = (0.10, 0.22)  # 10% to 22% of height
+    BANNER_MIN_PIXELS   = 500           # minimum yellow pixels to confirm
 
 # =============================================================
 # Logging - rotating file, max 5MB, keep 3 backups

@@ -3,6 +3,10 @@
 # AI COMPUTER only - do not copy to gaming PC
 # =============================================================
 
+# --- Game Version ---
+# Change to "FH6" when switching to Forza Horizon 6
+GAME_VERSION            = "FH5"
+
 # --- Network Settings ---
 AI_COMPUTER_IP          = "192.168.137.230"
 GAMING_PC_IP            = "192.168.137.63"

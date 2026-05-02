@@ -15,7 +15,7 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from config import TELEMETRY_PORT, LOGS_FOLDER
+from config import TELEMETRY_PORT, LOGS_FOLDER, GAME_VERSION
 
 # =============================================================
 # Logging - rotating file, max 5MB, keep 3 backups
@@ -65,15 +65,25 @@ DRIVETRAIN_NAMES = {
 
 
 def pi_to_class(pi):
-    """Derive car class letter from PI value."""
-    if pi <= 100:   return "E"
-    if pi <= 500:   return "D"
-    if pi <= 600:   return "C"
-    if pi <= 700:   return "B"
-    if pi <= 800:   return "A"
-    if pi <= 900:   return "S1"
-    if pi <= 998:   return "S2"
-    return "X"
+    """Derive car class letter from PI value. Ranges differ between FH5 and FH6."""
+    if GAME_VERSION == "FH6":
+        if pi <= 100:   return "E"
+        if pi <= 400:   return "D"
+        if pi <= 500:   return "C"
+        if pi <= 600:   return "B"
+        if pi <= 700:   return "A"
+        if pi <= 800:   return "S1"
+        if pi <= 900:   return "S2"
+        return "X"
+    else:   # FH5
+        if pi <= 100:   return "E"
+        if pi <= 500:   return "D"
+        if pi <= 600:   return "C"
+        if pi <= 700:   return "B"
+        if pi <= 800:   return "A"
+        if pi <= 900:   return "S1"
+        if pi <= 998:   return "S2"
+        return "X"
 
 
 def parse_packet(data):

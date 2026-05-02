@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from config import CAPTURES_FOLDER, PROCESSED_FOLDER, LOGS_FOLDER
+from config import CAPTURES_FOLDER, PROCESSED_FOLDER, LOGS_FOLDER, GAME_VERSION
 
 # =============================================================
 # Configuration
@@ -103,6 +103,11 @@ def extract_results(client, image_path, race_id, telemetry_summary):
 
     image_data = image_to_base64(image_path)
 
+    track_name_hint = (
+        "exact text from black box at top"      if GAME_VERSION == "FH6"
+        else "exact text from yellow banner at top"
+    )
+
     prompt = f"""You are analyzing a Forza Horizon race results scoreboard screenshot.
 
 My gamertag is "{MY_GAMERTAG}" - find my row and extract my results.
@@ -110,7 +115,7 @@ Also extract all opponents who finished AHEAD of me (lower position number than 
 
 Return ONLY a JSON object with this exact structure, no other text:
 {{
-  "track_name": "exact text from yellow banner at top",
+  "track_name": "{track_name_hint}",
   "my_result": {{
     "position": 1,
     "car": "exact car name text",
