@@ -17,10 +17,10 @@ for /f "tokens=*" %%i in ('curl -s --max-time 5 http://192.168.137.230:5000/stat
 echo %RESPONSE% | find "stopped" > nul
 if not errorlevel 1 (
     :: CURRENTLY STOPPED - START EVERYTHING
-    echo Starting Stream Assistant (FH6)...
+    echo Starting Stream Assistant ^(FH6^)...
     start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && python capture_agent.py --game FH6"
     curl -s "http://192.168.137.230:5000/toggle?game=FH6" > nul
-    echo Stream Assistant STARTED (FH6)
+    echo Stream Assistant STARTED ^(FH6^)
     exit /b 0
 )
 
