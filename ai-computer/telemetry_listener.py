@@ -59,6 +59,25 @@ OFFSET_LAP_NUMBER           = 312   # uint16
 OFFSET_RACE_POSITION        = 314   # uint8
 OFFSET_GEAR                 = 319   # uint8
 
+# Maps offset → (type, field_name) for packet scan annotations
+_KNOWN_OFFSETS = {
+    OFFSET_IS_RACE_ON:        ("int32",   "is_race_on"),
+    OFFSET_CAR_ORDINAL:       ("int32",   "car_ordinal"),
+    OFFSET_CAR_CLASS:         ("int32",   "car_class"),
+    OFFSET_CAR_PI:            ("int32",   "car_pi"),
+    OFFSET_DRIVETRAIN_TYPE:   ("int32",   "drivetrain_type"),
+    OFFSET_SPEED:             ("float32", "speed_ms"),
+    OFFSET_BEST_LAP:          ("float32", "best_lap"),
+    OFFSET_LAST_LAP:          ("float32", "last_lap"),
+    OFFSET_CURRENT_LAP:       ("float32", "current_lap"),
+    OFFSET_CURRENT_RACE_TIME: ("float32", "current_race_time"),
+    OFFSET_LAP_NUMBER:        ("uint16",  "lap_number"),
+    OFFSET_RACE_POSITION:     ("uint8",   "race_position"),
+    OFFSET_GEAR:              ("uint8",   "gear"),
+}
+
+PACKET_SAMPLE_FOLDER = os.path.join(LOGS_FOLDER, "packet_samples")
+
 DRIVETRAIN_NAMES = {
     0: "FWD", 1: "RWD", 2: "AWD"
 }
@@ -128,6 +147,7 @@ def parse_packet(data, game_version="FH5"):
         }
     except struct.error as e:
         log.warning(f"Packet parse error ({len(data)} bytes): {e}")
+        log.warning(f"  Hex dump (first 360 bytes): {data[:360].hex()}")
         return None
 
 
@@ -154,6 +174,7 @@ class TelemetryListener:
         self.last_packet_time   = None
         self.race_end_debounce  = 0
         self.race_end_start_time = None
+        self._last_packet_size  = None
         self._reset_race_state()
 
     def _reset_race_state(self):
@@ -171,6 +192,7 @@ class TelemetryListener:
         self.max_speed_seen     = 0
         self.max_position_seen  = 0
         self.race_end_debounce  = 0
+        self._race_sample_saved = False
 
     def start(self):
         """Start listening. Runs until Ctrl+C."""
@@ -200,8 +222,76 @@ class TelemetryListener:
         finally:
             sock.close()
 
+    def _save_packet_sample(self, data):
+        """
+        Save raw packet bytes and a human-readable field scan to packet_samples/.
+        Called once per race at race start so we have material to compare FH5 vs FH6.
+        All 4-byte-aligned offsets are decoded as float32 and int32; known fields
+        are labelled. Only non-zero unknown values are printed to keep output readable.
+        """
+        os.makedirs(PACKET_SAMPLE_FOLDER, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stem = f"packet_{self.game_version}_{ts}_{len(data)}b"
+        bin_path = os.path.join(PACKET_SAMPLE_FOLDER, stem + ".bin")
+        txt_path = os.path.join(PACKET_SAMPLE_FOLDER, stem + ".txt")
+
+        with open(bin_path, "wb") as f:
+            f.write(data)
+
+        lines = [
+            f"Game version: {self.game_version}",
+            f"Packet size : {len(data)} bytes",
+            f"Captured    : {datetime.now()}",
+            "",
+            f"{'Offset':>6}  {'As float32':>14}  {'As int32':>12}  Notes",
+            "-" * 60,
+        ]
+        offset = 0
+        while offset + 4 <= len(data):
+            known = _KNOWN_OFFSETS.get(offset)
+            f_val = struct.unpack_from('<f', data, offset)[0]
+            i_val = struct.unpack_from('<i', data, offset)[0]
+
+            if known:
+                typ, name = known
+                if typ in ("uint8", "uint16"):
+                    offset += 4
+                    continue
+                label = f"[KNOWN: {name}]"
+                lines.append(f"{offset:>6}  {f_val:>14.4f}  {i_val:>12}  {label}")
+            elif f_val != 0.0 or i_val != 0:
+                lines.append(f"{offset:>6}  {f_val:>14.4f}  {i_val:>12}")
+
+            offset += 4
+
+        lines.append("")
+        lines.append("Sub-word known fields:")
+        for off, (typ, name) in sorted(_KNOWN_OFFSETS.items()):
+            if typ == "uint8":
+                val = struct.unpack_from('<B', data, off)[0]
+                lines.append(f"  offset {off:>3}  uint8   {val:>6}  [KNOWN: {name}]")
+            elif typ == "uint16":
+                val = struct.unpack_from('<H', data, off)[0]
+                lines.append(f"  offset {off:>3}  uint16  {val:>6}  [KNOWN: {name}]")
+
+        with open(txt_path, "w") as f:
+            f.write("\n".join(lines))
+
+        log.info(f"Packet sample saved : {bin_path}")
+        log.info(f"Field scan saved    : {txt_path}")
+
     def _handle_packet(self, data):
         """Process one incoming UDP packet."""
+        # Track packet size — a change signals a possible protocol shift
+        pkt_size = len(data)
+        if self._last_packet_size is None:
+            log.info(f"First UDP packet received: {pkt_size} bytes")
+            self._last_packet_size = pkt_size
+        elif pkt_size != self._last_packet_size:
+            log.warning(f"Packet size changed: {self._last_packet_size} → {pkt_size} bytes "
+                        f"— possible protocol change")
+            self._last_packet_size = pkt_size
+
         t = parse_packet(data, self.game_version)
         if t is None:
             return
@@ -209,6 +299,14 @@ class TelemetryListener:
         self.last_packet_time = time.time()
         is_race_on = t["is_race_on"] == 1
         position = t["position"]
+
+        # Field anomaly detection — values outside physical bounds suggest an offset shift
+        if t["speed_mph"] > 350:
+            log.warning(f"Field anomaly: speed={t['speed_mph']:.0f}mph — possible offset shift")
+        if 0 < position > 24:
+            log.warning(f"Field anomaly: position={position} — possible offset shift")
+        if t["car_pi"] != 0 and not (100 <= t["car_pi"] <= 999):
+            log.warning(f"Field anomaly: car_pi={t['car_pi']} — possible offset shift")
 
         # -------------------------------------------------------
         # RACE END: position == 0 AND is_race_on == 0
@@ -250,6 +348,9 @@ class TelemetryListener:
             self.drivetrain         = t["drivetrain"]
             log.info(f"Race session started | Class: {self.car_class} "
                      f"({self.car_pi} PI) | {self.drivetrain}")
+            if not self._race_sample_saved:
+                self._save_packet_sample(data)
+                self._race_sample_saved = True
 
         self.race_packets += 1
 
