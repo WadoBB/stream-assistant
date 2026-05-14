@@ -33,6 +33,7 @@ FH5_SPREADSHEET_ID      = "1Kk7Z35YZJQn9ZdkBl5-_Eso_nzKXxCmauszChrME9hE"   # For
 FH6_SPREADSHEET_ID      = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"   # Forza Horizon 6
 RESULTS_TAB             = "Results"
 OPPONENTS_TAB           = "Opponents"
+CARS_TAB                = "Cars"
 
 # --- Ollama (future use) ---
 OLLAMA_MODEL            = "llama3.1:latest"
