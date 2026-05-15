@@ -86,13 +86,13 @@ DRIVETRAIN_NAMES = {
 def pi_to_class(pi, game_version="FH5"):
     """Derive car class letter from PI value. Ranges differ between FH5 and FH6."""
     if game_version == "FH6":
-        if pi <= 100:   return "E"
         if pi <= 400:   return "D"
         if pi <= 500:   return "C"
         if pi <= 600:   return "B"
         if pi <= 700:   return "A"
         if pi <= 800:   return "S1"
         if pi <= 900:   return "S2"
+        if pi <= 998:   return "R"
         return "X"
     else:   # FH5
         if pi <= 100:   return "E"
