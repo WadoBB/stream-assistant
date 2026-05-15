@@ -112,27 +112,41 @@ Date | Race ID | Position | Car | Class | Race Type | Track | Total Racers | Bes
 **Opponents tab columns:**
 Race ID | Track | Position | Gamertag | Car | Class | PI | Best Lap | Race Time | Gap To Me
 
+**Cars tab** (inventory, managed manually + by Apps Script):
+FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins
+
 Only opponents who finished *ahead* of you are logged. Best Lap is blank for
 point-to-point and trail races (no laps to track).
+
+**Races and Wins** (Cars tab columns N and O) are updated automatically after
+every race by `sheets_writer.py`. Matching uses the composite key
+**(Car Name, Class, Type)** — the same car tuned to different classes or
+surface types (Road vs Dirt) is tracked separately.
+
+A Google Apps Script (`Forza Car Updater`) runs separately (manually or on a
+daily schedule) and manages additional computed columns — Win Rate, Best Time,
+Last Raced — plus the Fav flag logic and the **Best by Track+Class** tab.
+Run it from the **Forza → Update Cars** menu in the spreadsheet.
 
 ---
 
 ## PI Class Ranges
 
-PI class boundaries differ between games:
+PI class boundaries differ between games. FH6 introduces the **R** class and
+removes **E**. The correct ranges are applied automatically based on the game
+version selected at startup.
 
 | Class | FH5 PI Range | FH6 PI Range |
 |---|---|---|
-| E | ≤ 100 | ≤ 100 |
-| D | 101 – 500 | 101 – 400 |
+| E | ≤ 100 | — |
+| D | 101 – 500 | 100 – 400 |
 | C | 501 – 600 | 401 – 500 |
 | B | 601 – 700 | 501 – 600 |
 | A | 701 – 800 | 601 – 700 |
 | S1 | 801 – 900 | 701 – 800 |
 | S2 | 901 – 998 | 801 – 900 |
-| X | 999+ | 901+ |
-
-The correct ranges are applied automatically based on the game version selected at startup.
+| R | — | 901 – 998 |
+| X | 999 | 999 |
 
 ---
 
@@ -439,21 +453,47 @@ All logs rotate automatically — max 5MB per file, 3 backups kept (~20MB total 
 | Log | Location | Contains |
 |---|---|---|
 | stream_assistant.log | ai-computer\logs\ | Main pipeline activity |
-| telemetry.log | ai-computer\logs\ | Race detection detail |
+| telemetry.log | ai-computer\logs\ | Race detection, field anomaly warnings |
 | controller.log | ai-computer\logs\ | Toggle history |
 | capture_agent.log | gaming-pc\logs\ | Screenshot detection |
+
+**Packet samples** are saved to `ai-computer\logs\packet_samples\` — one pair
+of files per race session:
+
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.bin` — raw UDP bytes for offline analysis
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.txt` — human-readable field scan: every
+  4-byte-aligned offset decoded as float32 and int32, known fields labelled
+
+These are primarily useful during FH6 launch to verify packet structure and
+discover any new fields. Compare an FH5 `.txt` against an FH6 `.txt` to spot
+offset shifts or new data.
+
+The telemetry log also emits **WARNING** entries if:
+- The UDP packet size changes between sessions (protocol shift signal)
+- A parsed field value is outside physical bounds (speed > 350mph, position > 24, PI out of 100–999 range)
 
 ---
 
 ## What's Not Yet Built
 
-- **FH6 detection tuning** — lime-green HSV values and region coordinates are estimated
-  from pre-release screenshots. Verify and tune against live FH6 gameplay on launch.
-- **FH6 telemetry offsets** — packet structure assumed unchanged from FH5. Verify against
-  FH6 UDP spec on launch.
-- **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously,
-  deferred until streaming is established
-- **Stream Deck button color change** — dynamic green/red state indicator, tracked separately
+- **FH6 detection tuning** — scoreboard detection values (banner color, region
+  coordinates) are based on pre-release information. Verify and tune against live
+  FH6 gameplay on launch. Check `capture_agent.log` for pixel counts if the
+  scoreboard isn't being detected.
+- **FH6 telemetry offsets** — packet structure assumed unchanged from FH5. The
+  probe logging (packet samples + field anomaly warnings) will surface any
+  differences on first play session. Verify offsets against the FH6 UDP spec.
+- **Online/AI race flag** — a planned column in the Results tab to distinguish
+  Open online races from AI races, enabling separate win-rate tracking.
+- **Car-change detection** — `car_ordinal` changes in telemetry when you switch
+  cars in free roam; detecting this would trigger stream overlay events (car
+  info popup, stats display) without needing a screen scraper.
+- **Stream overlays** — OBS browser-source overlays fed by a local JSON file:
+  car stats on car change, race summary at race end, personal record alerts.
+- **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat
+  simultaneously; deferred until streaming is established.
+- **Stream Deck button color change** — dynamic green/red state indicator,
+  tracked separately.
 
 ---
 
