@@ -196,12 +196,12 @@ Rules:
 
         if race_mode in SKIP_RACE_MODES:
             log.info(f"Skipping {race_mode} race - not recorded: {track}")
-            return None, None
+            return "SKIP", None
 
         total_racers = data["my_result"].get("total_racers")
         if total_racers is not None and total_racers < 3:
             log.info(f"Skipping race with only {total_racers} racer(s): {track}")
-            return None, None
+            return "SKIP", None
 
         race_type, lap_based = derive_race_type(track)
         my              = data["my_result"]
@@ -312,7 +312,15 @@ class ResultsExtractor:
                 self.client, filepath, race_id, telemetry, self.game_version
             )
 
-            if race_result:
+            if race_result == "SKIP":
+                # Intentional skip (e.g. Touge, Time Attack) - delete cleanly
+                try:
+                    os.remove(filepath)
+                    log.info(f"Skipped race - deleted screenshot: {filename}")
+                except Exception as e:
+                    log.warning(f"Could not delete skipped screenshot {filename}: {e}")
+
+            elif race_result:
                 if self.on_results_ready:
                     self.on_results_ready(race_result, opponents)
 
@@ -322,8 +330,9 @@ class ResultsExtractor:
                     log.info(f"Deleted screenshot: {filename}")
                 except Exception as e:
                     log.warning(f"Could not delete {filename}: {e}")
+
             else:
-                # Move failed extractions to processed for manual review
+                # Actual failure - move to processed for manual review
                 processed_path = os.path.join(PROCESSED_FOLDER, filename)
                 try:
                     os.rename(filepath, processed_path)
