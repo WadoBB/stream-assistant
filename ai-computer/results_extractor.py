@@ -31,8 +31,12 @@ RACE_TYPE_MAP = [
     ("TRAIL",                   "Dirt Trail",               False),
     ("CIRCUIT",                 "Road Circuit",             True),
     ("SPRINT",                  "Road Sprint",              False),
+    ("DRAG",                    "Drag Race",                False),
 ]
 RACE_TYPE_DEFAULT = ("Street Race", False)
+
+# Race modes that should be skipped entirely (not recorded)
+SKIP_RACE_MODES = {"Time Attack"}
 
 # =============================================================
 # Logging
@@ -116,6 +120,7 @@ Also extract all opponents who finished AHEAD of me (lower position number than 
 Return ONLY a JSON object with this exact structure, no other text:
 {{
   "track_name": "{track_name_hint}",
+  "race_mode": "Standard",
   "my_result": {{
     "position": 1,
     "car": "exact car name text",
@@ -145,6 +150,7 @@ Rules:
 - opponents_ahead = only racers with a LOWER position number than mine
 - Strip club tags (text in square brackets) from gamertags
 - PI is the number shown next to the class badge (e.g. S1 900 → pi: 900)
+- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" if all racers appear to be in the same car model (stock/spec event); use "Standard" for all other races
 - Return valid JSON only, no markdown, no explanation"""
 
     try:
@@ -186,8 +192,21 @@ Rules:
                  f"Position: {data['my_result'].get('position')}")
 
         track           = data.get("track_name", "Unknown")
+        race_mode       = data.get("race_mode", "Standard")
+
+        if race_mode in SKIP_RACE_MODES:
+            log.info(f"Skipping {race_mode} race - not recorded: {track}")
+            return None, None
+
+        total_racers = data["my_result"].get("total_racers")
+        if total_racers is not None and total_racers < 3:
+            log.info(f"Skipping race with only {total_racers} racer(s): {track}")
+            return None, None
+
         race_type, lap_based = derive_race_type(track)
         my              = data["my_result"]
+
+        notes = "Spec Race" if race_mode == "Spec Race" else ""
 
         race_result = {
             "race_id":      race_id,
@@ -202,7 +221,7 @@ Rules:
             "total_racers": my.get("total_racers"),
             "best_lap":     telemetry_summary.get("best_lap")  if lap_based else "",
             "race_time":    my.get("race_time") or telemetry_summary.get("race_time"),
-            "notes":        ""
+            "notes":        notes
         }
 
         my_position     = my.get("position", 99)
