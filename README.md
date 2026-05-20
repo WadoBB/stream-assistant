@@ -474,6 +474,42 @@ The telemetry log also emits **WARNING** entries if:
 
 ---
 
+## Race Type Detection and Filtering
+
+Race type is derived from keywords in the track name returned by Claude. The map is evaluated top-to-bottom and the first match wins.
+
+| Keyword in Track Name | Race Type Recorded |
+|---|---|
+| CROSS COUNTRY CIRCUIT | Cross-Country Circuit |
+| CROSS COUNTRY | Cross-Country |
+| SCRAMBLE | Dirt Scramble |
+| TRAIL | Dirt Trail |
+| CIRCUIT | Road Circuit |
+| SPRINT | Road Sprint |
+| DRAG | Drag Race |
+| *(no match)* | Street Race |
+
+**Races that are automatically skipped (not recorded):**
+
+| Condition | Reason |
+|---|---|
+| `race_mode = "Time Attack"` | Solo timed events — no opponents, not meaningful for comparison |
+| `total_racers < 3` | Filters out Touge races (always 1v1) and other sub-3-racer events |
+
+**Spec Race** — recorded normally on the Results and Opponents tabs, but the Notes column is set to `"Spec Race"`. The Google Apps Script (`Forza Car Updater`) skips the car stats update for these rows because all cars are running stock tunes, making lap times incomparable to tuned race data.
+
+### Known Limitation — Short Drag Races Are Skipped
+
+The telemetry listener requires a minimum race wall-clock duration of **30 seconds** before recording. This filter exists to discard false positives from loading screens, replays, and early quits.
+
+Drag races at the highest car class finish in roughly 11–17 seconds — well under this threshold — so they are discarded before the scoreboard screenshot is even requested.
+
+**Current status:** Accepted for personal use. Drag racing is rarely done outside of storyline requirements and weekly challenges.
+
+**If this ever needs to be fixed:** The threshold is `MIN_RACE_DURATION_SECONDS = 30` in `telemetry_listener.py`. The cleanest fix would be to detect the drag race signature in telemetry (very high speed, very short duration, no laps) and bypass the duration check for that specific case. A simple threshold reduction risks letting early quits through.
+
+---
+
 ## What's Not Yet Built
 
 - **FH6 detection tuning** — scoreboard detection values (banner color, region
