@@ -146,7 +146,7 @@ class SheetsWriter:
             log.info("No results rows found — Cars stats not updated")
             return
 
-        headers = [h.lower() for h in rows[0]]
+        headers = [h.lower().replace(" ", "_") for h in rows[0]]
         try:
             car_col       = headers.index("car")
             pos_col       = headers.index("position")
