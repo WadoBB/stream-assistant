@@ -125,10 +125,19 @@ pixel analysis against a real scoreboard screenshot.
 
 ## Git / GitHub Notes
 - Repository is hosted on GitHub
-- Branch: main
 - Both computers clone from the same repo
 - Either computer can be fully restored from GitHub
-- Use `git push origin main` and `git pull origin main` for syncing between machines
+
+**Active development branch: `fh6`**
+- All current work happens on the `fh6` branch
+- The AI computer pulls from `fh6`, not main
+- Always commit and push to `fh6`: `git push origin fh6` / `git pull origin fh6`
+- `main` is stable/production — do not push there until FH6 testing is complete and the branch is ready to merge
+
+**Working directory: `C:\StreamAssistant`**
+- Always make edits, commits, and pushes directly in `C:\StreamAssistant`
+- This is the `fh6` branch working tree
+- Ignore any Claude-created worktrees (paths like `.claude\worktrees\...`) — work there causes confusion and requires extra cherry-pick steps to get changes onto the right branch
 
 ## FH6 Preparation Notes
 When Forza Horizon 6 launches, the following will likely need revisiting:
