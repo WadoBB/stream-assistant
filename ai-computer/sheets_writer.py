@@ -112,7 +112,7 @@ class SheetsWriter:
         """
         self._append_result(race_result)
 
-        if opponents:
+        if opponents and race_result.get("notes") != "Spec Race":
             self._append_opponents(opponents)
             log.info(f"Wrote {len(opponents)} opponent row(s) to Opponents tab")
         else:
