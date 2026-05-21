@@ -281,16 +281,14 @@ differences on the first FH6 play session.
 - Both computers clone from the same repo
 - Either computer can be fully restored from GitHub
 
-**Active development branch: `fh6`**
-- All current work happens on the `fh6` branch
-- The AI computer pulls from `fh6`, not main
-- Always commit and push to `fh6`: `git push origin fh6` / `git pull origin fh6`
-- `main` is stable/production — do not push there until FH6 testing is complete and the branch is ready to merge
+**Active development branch: `main`**
+- All current work happens on `main`
+- Always commit and push to `main`: `git push origin main` / `git pull origin main`
+- If a large feature requires a branch, create one, but merge back to main when done and do not continue developing on the feature branch
 
 **Working directory: `C:\StreamAssistant`**
 - Always make edits, commits, and pushes directly in `C:\StreamAssistant`
-- This is the `fh6` branch working tree
-- Ignore any Claude-created worktrees (paths like `.claude\worktrees\...`) — work there causes confusion and requires extra cherry-pick steps to get changes onto the right branch
+- Ignore any Claude-created worktrees (paths like `.claude\worktrees\...`) — work there causes confusion and requires extra steps to get changes onto the right branch
 
 ## What's Not Yet Built
 - **FH6 detection tuning** — scoreboard detection values for FH6 are from pre-release screenshots; verify and tune against live FH6 gameplay (check capture_agent.log for pixel counts)
