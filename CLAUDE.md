@@ -11,42 +11,118 @@ Race start and end are detected using telemetry data from the game.
 Captured data is stored in Google Sheets. Claude (AI) is used to scrape data from
 screenshots. Screenshots are analyzed to extract race results from the scoreboard.
 
+**Both Forza Horizon 5 and Forza Horizon 6 are supported simultaneously** via a
+`--game` flag. The user selects the active game at session start using a Stream Deck
+button — no config changes needed between games.
+
 ## Architecture — Two-Computer System
 The system intentionally runs across two computers to minimize load on the gaming/streaming PC.
 
-**Gaming PC:**
+**Gaming PC (192.168.137.63):**
 - Runs Forza Horizon
-- Captures and saves screenshots of the race scoreboard
-- Runs the capture agent
-- Streams gameplay
+- Runs `capture_agent.py` — detects scoreboard, takes screenshot
+- Streams gameplay via Stream Deck
 
-**AI Computer:**
-- Monitors for new screenshots
-- Uses Claude API to scrape race data from screenshots
-- Posts results to Google Sheets
+**AI Computer (192.168.137.230):**
+- Runs `controller.py` (Flask, port 5000) — Stream Deck toggle target
+- Runs `telemetry_listener.py` — reads Forza UDP on port 9999
+- Runs `results_extractor.py` — sends screenshot to Claude API, extracts data
+- Runs `sheets_writer.py` — writes to Google Sheets
 - Hosts the shared network folder that the gaming PC writes screenshots to
 
 **Important:** All code for both sides of the system lives on BOTH computers.
 This is intentional — it simplifies GitHub management and means either computer
 can be fully restored from GitHub if lost.
 
-## Shared Drive Setup (Critical for Reinstallation)
-The AI computer hosts a shared network folder. The gaming PC connects to it via
-a mapped drive letter. This means the gaming PC writes screenshots to a local
-drive letter that is actually a network path pointing to a folder on the AI computer.
+## Network Configuration
 
-Setup steps during reinstallation:
-1. Create a user account on the AI computer for share access
-2. Share the captures folder on the AI computer
-3. On the gaming PC, map a drive letter to that network share path
-4. The capture agent uses that drive letter as its save destination
+| Computer    | IP               | Role                                     |
+|-------------|------------------|------------------------------------------|
+| Gaming PC   | 192.168.137.63   | Forza, capture agent, Stream Deck        |
+| AI Computer | 192.168.137.230  | All intelligence, controller, sheets     |
+
+| Port | Protocol | Purpose                                  |
+|------|----------|------------------------------------------|
+| 9999 | UDP      | Forza telemetry → AI computer            |
+| 9998 | UDP      | AI computer → capture agent (RACE_END trigger) |
+| 5000 | TCP      | Flask controller (Stream Deck toggle)    |
+
+If IPs change, update `ai-computer/config.py` and both bat files in `gaming-pc/`.
+
+## Network Share (Screenshots)
+The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.
+The gaming PC maps this as drive **Z:** → `\\192.168.137.230\StreamCaptures`.
+The capture agent writes screenshots to Z:\.
+
+Setup during reinstallation:
+1. Share the captures folder on the AI computer (share name: `StreamCaptures`)
+2. On the gaming PC, map Z: to `\\192.168.137.230\StreamCaptures` (reconnect at sign-in)
+3. Enter the AI computer account credentials when prompted
 
 This is not fully automated and must be set up manually during any reinstallation.
+
+## Game Version Switching
+The `--game` flag (FH5 or FH6) is passed from the Stream Deck bat file through
+the entire pipeline. controller → main.py → telemetry_listener, results_extractor,
+sheets_writer, and capture_agent all switch behavior based on it.
+
+- `gaming-pc/toggle_fh5.bat` — starts everything in FH5 mode, writes to FH5 sheet
+- `gaming-pc/toggle_fh6.bat` — starts everything in FH6 mode, writes to FH6 sheet
+
+Switching mid-session: press the running button to stop, then press the other to start.
+
+Google Sheets IDs (from `ai-computer/config.py`):
+- `FH5_SPREADSHEET_ID = "1Kk7Z35YZJQn9ZdkBl5-_Eso_nzKXxCmauszChrME9hE"`
+- `FH6_SPREADSHEET_ID = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"`
 
 ## Race Type — Dirt Trail vs Dirt Point to Point
 The preferred race type designation is **Dirt Trail**. At one point the code was
 changed to use "Dirt Point to Point" — this was incorrect and has been reverted.
 Always use **Dirt Trail**.
+
+## Race Type Detection
+Race type is derived from keywords in the track name returned by Claude.
+Evaluated top-to-bottom; **first match wins.** Order matters — do not reorder.
+
+| Keyword in Track Name | Race Type Recorded     |
+|-----------------------|------------------------|
+| CROSS COUNTRY CIRCUIT | Cross-Country Circuit  |
+| CROSS COUNTRY         | Cross-Country          |
+| SCRAMBLE              | Dirt Scramble          |
+| TRAIL                 | Dirt Trail             |
+| CIRCUIT               | Road Circuit           |
+| SPRINT                | Road Sprint            |
+| DRAG                  | Drag Race              |
+| *(no match)*          | Street Race            |
+
+"CROSS COUNTRY CIRCUIT" must precede "CROSS COUNTRY" and "CIRCUIT" or those
+would match first.
+
+## Filtering Rules — Races That Are Skipped
+Some race results are automatically skipped and not recorded:
+
+| Condition               | Reason                                                     |
+|-------------------------|------------------------------------------------------------|
+| `race_mode = "Time Attack"` | Solo timed events — no opponents, not meaningful for comparison |
+| `total_racers < 3`      | Filters out Touge races (1v1) and other sub-3-racer events |
+
+**Spec Race** is recorded normally on both Results and Opponents tabs, but the
+Notes column is set to `"Spec Race"`. The Google Apps Script (`Forza Car Updater`)
+skips car stats updates for these rows because all cars run stock tunes — lap times
+are not comparable to tuned race data.
+
+## Known Limitation — Short Drag Races Are Skipped
+`MIN_RACE_DURATION_SECONDS = 30` in `telemetry_listener.py` filters out false
+positives from loading screens and early quits. Drag races at high car class
+finish in roughly 11–17 seconds — well under this threshold — so they are silently
+dropped before a scoreboard screenshot is even requested.
+
+**Status:** Accepted for personal use. Drag racing is rarely done outside of
+storyline requirements and weekly challenges.
+
+**If this ever needs to be fixed:** Detect the drag race signature in telemetry
+(very high speed, very short duration, no laps) and bypass the duration check
+for that case. A simple threshold reduction risks letting early quits through.
 
 ## Scoreboard Time vs Telemetry Time
 Race time is captured from the **scoreboard screenshot**, not from the telemetry.
@@ -75,53 +151,130 @@ result being recorded. This is rare and has been left unresolved intentionally.
 1. The user quits a race after it has started
 2. The game returns to free roam
 3. The telemetry listener correctly detects race end (packet timeout)
-4. The capture agent starts watching for the scoreboard yellow banner
-5. If the user hits pause quickly, yellow UI elements on the pause menu can be
-   mistaken for the track name banner
+4. The capture agent starts watching for the scoreboard header
+5. If the user hits pause quickly, colored UI elements on the pause menu can be
+   mistaken for the scoreboard header (yellow in FH5, lime-green in FH6)
 6. A screenshot is taken and processed, posting a result line with bad data
 
 **How to identify a false capture:**
 - The car name is the long descriptive string rather than the short scoreboard name
 - The screenshot is NOT deleted after processing (normal successful captures are deleted)
 
-**Status:** Rare enough to leave for now. Yellow detection logic will likely need
-to be revisited when Forza Horizon 6 launches anyway, as the scoreboard appearance
-may change. Any attempted fix must not break the normal capture flow.
+**Status:** Rare enough to leave for now. Detection logic will likely need
+revisiting as FH6 live gameplay is tested anyway.
 
 **Important:** A previous attempt to fix this by tightening the yellow detection
 region broke the normal capture flow and was fully reverted. Do not attempt
-yellow detection changes without extensive testing against normal race completions.
+detection region changes without extensive testing against normal race completions.
 
-## Yellow Area Detection — Handle With Care
-A yellow banner at the top-left of the race scoreboard is used to detect when the
-end-of-race scoreboard is being displayed. This triggers screenshot capture.
+## FH5 Scoreboard Detection — Yellow Banner
+FH5 uses a **yellow banner** at the top-left of the race scoreboard to detect when
+the end-of-race scoreboard is being displayed.
 
-The game is currently played in a windowed/streaming mode which adds black bars
-at the top and bottom of the screen. This affects where the yellow banner appears
-as a fraction of total screen height.
+The game is played in a windowed/streaming mode which adds black bars at the top
+and bottom of the screen. This affects where the yellow banner appears as a fraction
+of total screen height.
 
 A pixel analysis of a real scoreboard screenshot (2612x1417) confirmed:
-- The track name banner yellow pixels are concentrated at **Y: 10-20%** of screen height
+- The track name banner yellow pixels are concentrated at **Y: 10-22%** of screen height
 - A "Time Remaining" banner also appears at **Y: 80-90%** — excluded by detection region
 - Main menu "World Map" yellow text appears at ~50% height — excluded by detection region
 
-Current detection settings in `capture_agent.py`:
+Current detection settings in `capture_agent.py` (FH5 branch):
 ```python
-BANNER_REGION_X      = (0.05, 0.50)   # left half of screen
-BANNER_REGION_Y      = (0.10, 0.20)   # 10-20% down from top
-BANNER_MIN_PIXELS    = 500
+BANNER_COLOR_LOW    = np.array([20,  150, 150])   # HSV lower bound
+BANNER_COLOR_HIGH   = np.array([35,  255, 255])   # HSV upper bound
+BANNER_REGION_X     = (0.05, 0.45)   # 5% to 45% of screen width
+BANNER_REGION_Y     = (0.10, 0.22)   # 10% to 22% of screen height
+BANNER_MIN_PIXELS   = 500
 ```
 
-These values are based on real data. Do not change them without re-running the
-pixel analysis against a real scoreboard screenshot.
+These values are based on real pixel analysis. Do not change them without re-running
+the pixel analysis against a real scoreboard screenshot.
+
+## FH6 Scoreboard Detection — Lime-Green Header
+FH6 uses a **lime-green column header row** spanning the full scoreboard table width,
+rather than the narrow left-side yellow banner used in FH5.
+
+Current detection settings in `capture_agent.py` (FH6 branch):
+```python
+BANNER_COLOR_LOW    = np.array([35,  200, 180])   # HSV lower bound
+BANNER_COLOR_HIGH   = np.array([50,  255, 255])   # HSV upper bound
+BANNER_REGION_X     = (0.15, 0.85)   # green header spans full table width
+BANNER_REGION_Y     = (0.18, 0.30)   # header sits lower than FH5 banner
+BANNER_MIN_PIXELS   = 1500           # larger region = higher threshold
+```
+
+**These values were derived from pre-release screenshots and may need tuning against
+live FH6 gameplay.** Check `gaming-pc\logs\capture_agent.log` for pixel counts if
+the scoreboard isn't being detected. Adjust `BANNER_COLOR_LOW`, `BANNER_COLOR_HIGH`,
+and `BANNER_MIN_PIXELS` as needed after observing live captures.
+
+## PI Class Ranges (Per Game)
+
+FH6 introduces the **R** class and removes **E**. PI boundaries also shift.
+The correct ranges are applied automatically based on the `--game` flag.
+
+| Class | FH5 PI Range | FH6 PI Range |
+|-------|--------------|--------------|
+| E     | ≤ 100        | —            |
+| D     | 101 – 500    | 100 – 400    |
+| C     | 501 – 600    | 401 – 500    |
+| B     | 601 – 700    | 501 – 600    |
+| A     | 701 – 800    | 601 – 700    |
+| S1    | 801 – 900    | 701 – 800    |
+| S2    | 901 – 998    | 801 – 900    |
+| R     | —            | 901 – 998    |
+| X     | 999          | 999          |
+
+## Google Sheets Structure
+
+Two separate spreadsheets — one per game (FH5 and FH6). Both use the same tab structure.
+
+**Results tab columns:**
+Date | Race ID | Position | Car | Class | Race Type | Track | Total Racers | Best Lap | Race Time | Notes
+
+**Opponents tab columns:**
+Race ID | Track | Position | Gamertag | Car | Class | PI | Best Lap | Race Time | Gap To Me
+
+Only opponents who finished *ahead* of the user are logged. Best Lap is blank for
+point-to-point and trail races (no laps to track). Spec Race rows have Notes = "Spec Race".
+
+**Cars tab** (inventory, managed manually + by Apps Script):
+FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins
+
+**Races and Wins** (columns N and O) are updated automatically after every race by
+`sheets_writer.py`. Matching uses the composite key **(Car Name, Class, Type)** —
+the same car tuned to different classes or surface types (Road vs Dirt) is tracked separately.
+
+**Google Apps Script** (`Forza Car Updater`) runs separately (manually or on a
+daily schedule) and manages computed columns — Win Rate, Best Time, Last Raced —
+plus the Fav flag logic and the **Best by Track+Class** tab. Run from the
+**Forza → Update Cars** menu in the spreadsheet. It skips Spec Race rows.
+
+## FH6 Telemetry Probe Logging
+Packet samples are saved to `ai-computer\logs\packet_samples\` — one pair of files
+per race session — to help verify FH6 packet structure on first live play:
+
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.bin` — raw UDP bytes for offline analysis
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.txt` — every 4-byte-aligned offset decoded as
+  float32 and int32, with known fields labelled
+
+Compare an FH5 `.txt` against an FH6 `.txt` to spot offset shifts or new fields.
+
+The telemetry log also emits **WARNING** entries if:
+- The UDP packet size changes between sessions (protocol shift signal)
+- A parsed field value is outside physical bounds (speed > 350mph, position > 24, PI out of 100–999 range)
+
+FH6 packet structure is assumed unchanged from FH5. These logs will surface any
+differences on the first FH6 play session.
 
 ## Tech Stack
 - Language: Python
-- Data storage: Google Sheets
-- AI scraping: Claude API (via screenshots)
+- Data storage: Google Sheets (separate spreadsheet per game version)
+- AI scraping: Claude API — model `claude-sonnet-4-6` (set in `config.py`)
 - Version control: GitHub
-- Currently testing on: Forza Horizon 5
-- Future target: Forza Horizon 6 (early release expected May 2026)
+- Games supported: Forza Horizon 5 and Forza Horizon 6
 
 ## Git / GitHub Notes
 - Repository is hosted on GitHub
@@ -139,9 +292,11 @@ pixel analysis against a real scoreboard screenshot.
 - This is the `fh6` branch working tree
 - Ignore any Claude-created worktrees (paths like `.claude\worktrees\...`) — work there causes confusion and requires extra cherry-pick steps to get changes onto the right branch
 
-## FH6 Preparation Notes
-When Forza Horizon 6 launches, the following will likely need revisiting:
-- Yellow banner detection (color, position, shape may change)
-- Claude extraction prompt (scoreboard layout may differ)
-- Race type detection keywords in `results_extractor.py`
-- Telemetry packet offsets (verify against FH6 UDP spec — may be unchanged)
+## What's Not Yet Built
+- **FH6 detection tuning** — scoreboard detection values for FH6 are from pre-release screenshots; verify and tune against live FH6 gameplay (check capture_agent.log for pixel counts)
+- **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
+- **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
+- **Car-change detection** — `car_ordinal` changes in telemetry when the user switches cars in free roam; would trigger stream overlay events without needing a screen scraper
+- **Stream overlays** — OBS browser-source overlays fed by a local JSON file: car stats on car change, race summary at race end, personal record alerts
+- **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
+- **Stream Deck button color change** — dynamic green/red state indicator, tracked separately
