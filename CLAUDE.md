@@ -1,5 +1,11 @@
 # Forza Race Results Extractor — Project Context
 
+## Working Directory and Branch — Read This First
+
+Always work in **`C:\StreamAssistant`** on the **`main`** branch.
+
+Claude Code may create worktrees under `C:\StreamAssistant\.claude\worktrees\` — ignore them entirely. Never read, edit, or commit from a worktree path. If you find yourself in one, stop and start a new session from `C:\StreamAssistant`.
+
 ## What This Project Does
 This system captures race information from Forza Horizon gaming sessions to compile
 performance data over time. Specifically it tracks:
