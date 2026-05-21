@@ -2,6 +2,7 @@
 
 Automatically captures Forza Horizon race results and logs them to Google Sheets.
 Built for a two-computer streaming setup — a Gaming PC and a dedicated AI computer.
+Supports both **Forza Horizon 5** and **Forza Horizon 6** via a game version switch.
 
 ---
 
@@ -14,8 +15,8 @@ When you finish a Forza Horizon race with the pipeline running:
 3. Claude AI reads the screenshot and extracts structured data
 4. Google Sheets is updated automatically — Results tab and Opponents tab
 
-You control it with a single Stream Deck button. Screenshots are deleted
-automatically after successful extraction — nothing accumulates on disk.
+You control it with a Stream Deck button — one for FH5, one for FH6.
+Screenshots are deleted automatically after successful extraction — nothing accumulates on disk.
 
 ---
 
@@ -36,7 +37,8 @@ stream-assistant/
 │
 ├── gaming-pc/                   ← copy to C:\StreamAssistant\gaming-pc\ on gaming PC
 │   ├── capture_agent.py         ← detects scoreboard, takes screenshot
-│   └── toggle_stream_assistant.bat   ← Stream Deck button action
+│   ├── toggle_fh5.bat           ← Stream Deck button for Forza Horizon 5
+│   └── toggle_fh6.bat           ← Stream Deck button for Forza Horizon 6
 │
 ├── .gitignore
 └── README.md
@@ -54,7 +56,25 @@ machines but only run files from the relevant subfolder.
 | Gaming PC | 192.168.137.63 | Forza, capture agent, Stream Deck |
 | AI Computer | 192.168.137.230 | All intelligence, controller, sheets |
 
-If IPs change, update `ai-computer/config.py` and `gaming-pc/toggle_stream_assistant.bat`.
+If IPs change, update `ai-computer/config.py` and both bat files in `gaming-pc/`.
+
+---
+
+## Game Version Switching
+
+The game version is selected by which Stream Deck button you press — no config changes needed.
+
+| Button | Bat File | Tracks | Writes To |
+|---|---|---|---|
+| FH5 | toggle_fh5.bat | Forza Horizon 5 | Forza Horizon 5 spreadsheet |
+| FH6 | toggle_fh6.bat | Forza Horizon 6 | Forza Horizon 6 spreadsheet |
+
+The `--game` flag is passed automatically through the entire pipeline:
+controller → main.py → telemetry listener, results extractor, sheets writer,
+and capture agent all switch behavior based on it.
+
+**Switching mid-session:** Press the running button to stop, then press the other
+button to start in the new mode.
 
 ---
 
@@ -67,7 +87,7 @@ Forza (Gaming PC)
                                                ▼
                                            main.py sends RACE_END trigger
   capture_agent.py (Gaming PC) ◄──────────── UDP (port 9998)
-  │ detects yellow scoreboard banner
+  │ detects scoreboard (FH5: yellow banner / FH6: lime-green header)
   │ takes screenshot
   └─ saves to \\AI-Computer\StreamCaptures\
                                                │
@@ -76,7 +96,7 @@ Forza (Gaming PC)
                                                ▼
                                            sheets_writer.py
                                                │
-                                           Google Sheets updated
+                                           Google Sheets updated (FH5 or FH6 sheet)
                                            Screenshot deleted
 ```
 
@@ -84,14 +104,49 @@ Forza (Gaming PC)
 
 ## Google Sheets
 
+Two separate spreadsheets — one per game. Both use the same tab structure:
+
 **Results tab columns:**
 Date | Race ID | Position | Car | Class | Race Type | Track | Total Racers | Best Lap | Race Time | Notes
 
 **Opponents tab columns:**
 Race ID | Track | Position | Gamertag | Car | Class | PI | Best Lap | Race Time | Gap To Me
 
+**Cars tab** (inventory, managed manually + by Apps Script):
+FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins
+
 Only opponents who finished *ahead* of you are logged. Best Lap is blank for
-point-to-point races (no laps to track).
+point-to-point and trail races (no laps to track).
+
+**Races and Wins** (Cars tab columns N and O) are updated automatically after
+every race by `sheets_writer.py`. Matching uses the composite key
+**(Car Name, Class, Type)** — the same car tuned to different classes or
+surface types (Road vs Dirt) is tracked separately.
+
+A Google Apps Script (`Forza Car Updater`) runs separately (manually or on a
+daily schedule) and manages additional computed columns — Win Rate, Best Time,
+Last Raced — plus the Fav flag logic and the **Best by Track+Class** tab.
+Run it from the **Forza → Update Cars** menu in the spreadsheet.
+
+---
+
+## PI Class Ranges
+
+PI class boundaries differ between games. FH6 introduces the **R** class and
+removes **E**. The correct ranges are applied automatically based on the game
+version selected at startup.
+
+| Class | FH5 PI Range | FH6 PI Range |
+|---|---|---|
+| E | ≤ 100 | — |
+| D | 101 – 500 | 100 – 400 |
+| C | 501 – 600 | 401 – 500 |
+| B | 601 – 700 | 501 – 600 |
+| A | 701 – 800 | 601 – 700 |
+| S1 | 801 – 900 | 701 – 800 |
+| S2 | 901 – 998 | 801 – 900 |
+| R | — | 901 – 998 |
+| X | 999 | 999 |
 
 ---
 
@@ -100,9 +155,10 @@ point-to-point races (no laps to track).
 | Step | Where | Action |
 |---|---|---|
 | AI computer boots | Automatic | controller.py starts silently |
-| Ready to log | Stream Deck button | Starts everything |
+| Ready to log FH5 | Stream Deck FH5 button | Starts everything in FH5 mode |
+| Ready to log FH6 | Stream Deck FH6 button | Starts everything in FH6 mode |
 | Race | Play normally | Pipeline runs in background |
-| Done logging | Stream Deck button | Stops everything |
+| Done logging | Same Stream Deck button | Stops everything |
 
 ---
 
@@ -139,14 +195,14 @@ dir C:\Users\%USERNAME%\AppData\Local\Python\bin\
 If found there, note the full path (e.g. `C:\Users\Benny\AppData\Local\Python\bin\python.exe`)
 and use it anywhere these instructions say `python`.
 
-You will also need to update `toggle_stream_assistant.bat` to use the full path.
-Find this line:
+You will also need to update both bat files to use the full path.
+Find this line in `toggle_fh5.bat` and `toggle_fh6.bat`:
 ```
-start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && python capture_agent.py"
+start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && python capture_agent.py --game FH5"
 ```
 Replace `python` with the full path:
 ```
-start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && C:\Users\Benny\AppData\Local\Python\bin\python.exe capture_agent.py"
+start "Capture Agent" /min cmd /c "cd C:\StreamAssistant\gaming-pc && C:\Users\Benny\AppData\Local\Python\bin\python.exe capture_agent.py --game FH5"
 ```
 
 ---
@@ -175,12 +231,14 @@ mkdir C:\StreamAssistant\gaming-pc
 ```
 cd C:\StreamAssistant
 git clone https://github.com/YOUR_USERNAME/stream-assistant.git .
+git checkout fh6
 ```
 
 **Gaming PC:**
 ```
 cd C:\StreamAssistant
 git clone https://github.com/YOUR_USERNAME/stream-assistant.git .
+git checkout fh6
 ```
 
 ---
@@ -230,7 +288,9 @@ ren C:\StreamAssistant\ai-computer\credentials\.env.txt .env
 5. Keys tab → Add Key → Create New Key → JSON → download
 6. Rename to `google_sheets.json`
 7. Move to `C:\StreamAssistant\ai-computer\credentials\`
-8. Open your Forza Google Sheet → Share with the service account email (Editor)
+8. Open `google_sheets.json` and copy the `client_email` value
+9. Share **both** the FH5 and FH6 Google Sheets with that email address (Editor access)
+   - Uncheck "Notify people" when sharing — the service account cannot receive email
 
 ---
 
@@ -239,9 +299,10 @@ ren C:\StreamAssistant\ai-computer\credentials\.env.txt .env
 Open `C:\StreamAssistant\ai-computer\config.py` and verify:
 
 ```python
-AI_COMPUTER_IP        = "192.168.137.230"   # update if changed
-GAMING_PC_IP          = "192.168.137.63"    # update if changed
-SHEETS_SPREADSHEET_ID = "your-sheet-id"    # from Google Sheet URL (between /d/ and /edit)
+AI_COMPUTER_IP       = "192.168.137.230"   # update if changed
+GAMING_PC_IP         = "192.168.137.63"    # update if changed
+FH5_SPREADSHEET_ID   = "your-fh5-sheet-id"  # from Google Sheet URL (between /d/ and /edit)
+FH6_SPREADSHEET_ID   = "your-fh6-sheet-id"  # from Google Sheet URL (between /d/ and /edit)
 ```
 
 ---
@@ -311,12 +372,20 @@ Should return: `{"status": "ok"}`
 
 ---
 
-### Step 11 — Stream Deck Button (Gaming PC)
+### Step 11 — Stream Deck Buttons (Gaming PC)
 
+Create two buttons — one for each game:
+
+**FH5 button:**
 1. Open Stream Deck software
 2. Drag **System: Open** onto your chosen button
-3. Set App/File to: `C:\StreamAssistant\gaming-pc\toggle_stream_assistant.bat`
-4. Label it "SA Toggle"
+3. Set App/File to: `C:\StreamAssistant\gaming-pc\toggle_fh5.bat`
+4. Label it "FH5"
+
+**FH6 button:**
+1. Drag **System: Open** onto a second button
+2. Set App/File to: `C:\StreamAssistant\gaming-pc\toggle_fh6.bat`
+3. Label it "FH6"
 
 ---
 
@@ -328,38 +397,48 @@ curl http://192.168.137.230:5000/status
 ```
 Should return: `{"status": "stopped"}`
 
-Press Stream Deck button, then:
+Press the FH5 Stream Deck button, then:
 ```
 curl http://192.168.137.230:5000/status
 ```
-Should return: `{"status": "running", ...}`
+Should return: `{"status": "running", "game": "FH5", ...}`
 
-Capture Agent window opens on gaming PC.
-main.py window opens on AI computer.
+Capture Agent window opens on gaming PC (titled "Capture Agent").
+main.py window opens on AI computer showing `Game : FH5`.
 
-Run a Forza race, check Google Sheet for new rows.
-Press Stream Deck button again to stop.
+Run a Forza race, check the FH5 Google Sheet for new rows.
+Press the FH5 button again to stop.
 
 ---
 
 ## Troubleshooting
 
 **Status always stopped after toggle**
-Run `python main.py` directly on AI computer to see the error.
+Run `python main.py --game FH5` directly on AI computer to see the error.
 Most common cause: missing or malformed `.env` file or `google_sheets.json`.
 
 **No Capture Agent window after toggle**
-Check IP in `toggle_stream_assistant.bat` matches AI computer.
-Test curl directly: `curl http://192.168.137.230:5000/toggle`
+Check IP in both bat files matches AI computer.
+Test curl directly: `curl "http://192.168.137.230:5000/toggle?game=FH5"`
 
-**Screenshot never taken**
+**Screenshot never taken (FH5)**
 Yellow banner detection may need HSV tuning for your monitor.
-Check `gaming-pc\logs\capture_agent.log` for errors.
+Check `gaming-pc\logs\capture_agent.log` for pixel counts.
+
+**Screenshot never taken (FH6)**
+Lime-green header detection values are based on pre-release screenshots and
+may need tuning against live gameplay. Check `gaming-pc\logs\capture_agent.log`.
+Adjust `BANNER_COLOR_LOW`, `BANNER_COLOR_HIGH`, and `BANNER_MIN_PIXELS` in
+`capture_agent.py` if needed.
 
 **Google Sheets not updating**
 Verify `google_sheets.json` exists in credentials folder.
-Verify sheet is shared with service account email.
-Verify SPREADSHEET_ID in config.py is correct (between /d/ and /edit in URL).
+Verify both sheets are shared with the service account email (Editor access).
+Verify `FH5_SPREADSHEET_ID` and `FH6_SPREADSHEET_ID` in config.py are correct.
+
+**Wrong spreadsheet being updated**
+Confirm the bat file used matches the game being played.
+Check AI computer console — it logs `Game : FH5` or `Game : FH6` on startup.
 
 **Controller unreachable from gaming PC**
 Check Windows Firewall port 5000 rule on AI computer.
@@ -374,16 +453,83 @@ All logs rotate automatically — max 5MB per file, 3 backups kept (~20MB total 
 | Log | Location | Contains |
 |---|---|---|
 | stream_assistant.log | ai-computer\logs\ | Main pipeline activity |
-| telemetry.log | ai-computer\logs\ | Race detection detail |
+| telemetry.log | ai-computer\logs\ | Race detection, field anomaly warnings |
 | controller.log | ai-computer\logs\ | Toggle history |
 | capture_agent.log | gaming-pc\logs\ | Screenshot detection |
+
+**Packet samples** are saved to `ai-computer\logs\packet_samples\` — one pair
+of files per race session:
+
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.bin` — raw UDP bytes for offline analysis
+- `packet_FH6_YYYYMMDD_HHMMSS_Xb.txt` — human-readable field scan: every
+  4-byte-aligned offset decoded as float32 and int32, known fields labelled
+
+These are primarily useful during FH6 launch to verify packet structure and
+discover any new fields. Compare an FH5 `.txt` against an FH6 `.txt` to spot
+offset shifts or new data.
+
+The telemetry log also emits **WARNING** entries if:
+- The UDP packet size changes between sessions (protocol shift signal)
+- A parsed field value is outside physical bounds (speed > 350mph, position > 24, PI out of 100–999 range)
+
+---
+
+## Race Type Detection and Filtering
+
+Race type is derived from keywords in the track name returned by Claude. The map is evaluated top-to-bottom and the first match wins.
+
+| Keyword in Track Name | Race Type Recorded |
+|---|---|
+| CROSS COUNTRY CIRCUIT | Cross-Country Circuit |
+| CROSS COUNTRY | Cross-Country |
+| SCRAMBLE | Dirt Scramble |
+| TRAIL | Dirt Trail |
+| CIRCUIT | Road Circuit |
+| SPRINT | Road Sprint |
+| DRAG | Drag Race |
+| *(no match)* | Street Race |
+
+**Races that are automatically skipped (not recorded):**
+
+| Condition | Reason |
+|---|---|
+| `race_mode = "Time Attack"` | Solo timed events — no opponents, not meaningful for comparison |
+| `total_racers < 3` | Filters out Touge races (always 1v1) and other sub-3-racer events |
+
+**Spec Race** — recorded normally on the Results and Opponents tabs, but the Notes column is set to `"Spec Race"`. The Google Apps Script (`Forza Car Updater`) skips the car stats update for these rows because all cars are running stock tunes, making lap times incomparable to tuned race data.
+
+### Known Limitation — Short Drag Races Are Skipped
+
+The telemetry listener requires a minimum race wall-clock duration of **30 seconds** before recording. This filter exists to discard false positives from loading screens, replays, and early quits.
+
+Drag races at the highest car class finish in roughly 11–17 seconds — well under this threshold — so they are discarded before the scoreboard screenshot is even requested.
+
+**Current status:** Accepted for personal use. Drag racing is rarely done outside of storyline requirements and weekly challenges.
+
+**If this ever needs to be fixed:** The threshold is `MIN_RACE_DURATION_SECONDS = 30` in `telemetry_listener.py`. The cleanest fix would be to detect the drag race signature in telemetry (very high speed, very short duration, no laps) and bypass the duration check for that specific case. A simple threshold reduction risks letting early quits through.
 
 ---
 
 ## What's Not Yet Built
 
-- **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously, deferred until streaming is established
-- **Stream Deck button color change** — dynamic green/red state indicator, tracked separately
+- **FH6 detection tuning** — scoreboard detection values (banner color, region
+  coordinates) are based on pre-release information. Verify and tune against live
+  FH6 gameplay on launch. Check `capture_agent.log` for pixel counts if the
+  scoreboard isn't being detected.
+- **FH6 telemetry offsets** — packet structure assumed unchanged from FH5. The
+  probe logging (packet samples + field anomaly warnings) will surface any
+  differences on first play session. Verify offsets against the FH6 UDP spec.
+- **Online/AI race flag** — a planned column in the Results tab to distinguish
+  Open online races from AI races, enabling separate win-rate tracking.
+- **Car-change detection** — `car_ordinal` changes in telemetry when you switch
+  cars in free roam; detecting this would trigger stream overlay events (car
+  info popup, stats display) without needing a screen scraper.
+- **Stream overlays** — OBS browser-source overlays fed by a local JSON file:
+  car stats on car change, race summary at race end, personal record alerts.
+- **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat
+  simultaneously; deferred until streaming is established.
+- **Stream Deck button color change** — dynamic green/red state indicator,
+  tracked separately.
 
 ---
 

@@ -27,12 +27,16 @@ ENV_FILE        = r"C:\StreamAssistant\ai-computer\credentials\.env"
 RACE_TYPE_MAP = [
     ("CROSS COUNTRY CIRCUIT",   "Cross-Country Circuit",    True),
     ("CROSS COUNTRY",           "Cross-Country",            False),
-    ("SCRAMBLE",                "Dirt Circuit",             True),
-    ("TRAIL",                   "Dirt Point to Point",      False),
+    ("SCRAMBLE",                "Dirt Scramble",            True),
+    ("TRAIL",                   "Dirt Trail",               False),
     ("CIRCUIT",                 "Road Circuit",             True),
     ("SPRINT",                  "Road Sprint",              False),
+    ("DRAG",                    "Drag Race",                False),
 ]
 RACE_TYPE_DEFAULT = ("Street Race", False)
+
+# Race modes that should be skipped entirely (not recorded)
+SKIP_RACE_MODES = {"Time Attack"}
 
 # =============================================================
 # Logging
@@ -93,7 +97,7 @@ def image_to_base64(image_path):
         return base64.standard_b64encode(f.read()).decode("utf-8")
 
 
-def extract_results(client, image_path, race_id, telemetry_summary):
+def extract_results(client, image_path, race_id, telemetry_summary, game_version="FH5"):
     """
     Send scoreboard screenshot to Claude API and extract structured data.
     Combines with telemetry summary for complete race record.
@@ -103,6 +107,11 @@ def extract_results(client, image_path, race_id, telemetry_summary):
 
     image_data = image_to_base64(image_path)
 
+    track_name_hint = (
+        "exact text from black box at top"      if game_version == "FH6"
+        else "exact text from yellow banner at top"
+    )
+
     prompt = f"""You are analyzing a Forza Horizon race results scoreboard screenshot.
 
 My gamertag is "{MY_GAMERTAG}" - find my row and extract my results.
@@ -110,7 +119,8 @@ Also extract all opponents who finished AHEAD of me (lower position number than 
 
 Return ONLY a JSON object with this exact structure, no other text:
 {{
-  "track_name": "exact text from yellow banner at top",
+  "track_name": "{track_name_hint}",
+  "race_mode": "Standard",
   "my_result": {{
     "position": 1,
     "car": "exact car name text",
@@ -140,6 +150,7 @@ Rules:
 - opponents_ahead = only racers with a LOWER position number than mine
 - Strip club tags (text in square brackets) from gamertags
 - PI is the number shown next to the class badge (e.g. S1 900 → pi: 900)
+- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" if all racers appear to be in the same car model (stock/spec event); use "Standard" for all other races
 - Return valid JSON only, no markdown, no explanation"""
 
     try:
@@ -181,8 +192,21 @@ Rules:
                  f"Position: {data['my_result'].get('position')}")
 
         track           = data.get("track_name", "Unknown")
+        race_mode       = data.get("race_mode", "Standard")
+
+        if race_mode in SKIP_RACE_MODES:
+            log.info(f"Skipping {race_mode} race - not recorded: {track}")
+            return "SKIP", None
+
+        total_racers = data["my_result"].get("total_racers")
+        if total_racers is not None and total_racers < 3:
+            log.info(f"Skipping race with only {total_racers} racer(s): {track}")
+            return "SKIP", None
+
         race_type, lap_based = derive_race_type(track)
         my              = data["my_result"]
+
+        notes = "Spec Race" if race_mode == "Spec Race" else ""
 
         race_result = {
             "race_id":      race_id,
@@ -197,7 +221,7 @@ Rules:
             "total_racers": my.get("total_racers"),
             "best_lap":     telemetry_summary.get("best_lap")  if lap_based else "",
             "race_time":    my.get("race_time") or telemetry_summary.get("race_time"),
-            "notes":        ""
+            "notes":        notes
         }
 
         my_position     = my.get("position", 99)
@@ -239,7 +263,8 @@ class ResultsExtractor:
     Failed extractions move to processed/ for manual review.
     """
 
-    def __init__(self, on_results_ready=None):
+    def __init__(self, game_version="FH5", on_results_ready=None):
+        self.game_version       = game_version
         self.on_results_ready   = on_results_ready
         self.client             = load_api_client()
         self.pending_telemetry  = {}
@@ -284,10 +309,18 @@ class ResultsExtractor:
 
             telemetry = self.pending_telemetry.pop(race_id, {})
             race_result, opponents = extract_results(
-                self.client, filepath, race_id, telemetry
+                self.client, filepath, race_id, telemetry, self.game_version
             )
 
-            if race_result:
+            if race_result == "SKIP":
+                # Intentional skip (e.g. Touge, Time Attack) - delete cleanly
+                try:
+                    os.remove(filepath)
+                    log.info(f"Skipped race - deleted screenshot: {filename}")
+                except Exception as e:
+                    log.warning(f"Could not delete skipped screenshot {filename}: {e}")
+
+            elif race_result:
                 if self.on_results_ready:
                     self.on_results_ready(race_result, opponents)
 
@@ -297,8 +330,9 @@ class ResultsExtractor:
                     log.info(f"Deleted screenshot: {filename}")
                 except Exception as e:
                     log.warning(f"Could not delete {filename}: {e}")
+
             else:
-                # Move failed extractions to processed for manual review
+                # Actual failure - move to processed for manual review
                 processed_path = os.path.join(PROCESSED_FOLDER, filename)
                 try:
                     os.rename(filepath, processed_path)

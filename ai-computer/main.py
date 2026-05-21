@@ -9,6 +9,7 @@
 import os
 import socket
 import logging
+import argparse
 import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -63,10 +64,11 @@ class StreamAssistant:
     - SheetsWriter       (Module 4) → writes to Google Sheets
     """
 
-    def __init__(self):
-        self.extractor  = ResultsExtractor(on_results_ready=self.on_results_ready)
-        self.writer     = SheetsWriter()
-        self.listener   = TelemetryListener(on_race_end=self.on_race_end)
+    def __init__(self, game_version="FH5"):
+        self.game_version   = game_version
+        self.extractor      = ResultsExtractor(game_version=game_version, on_results_ready=self.on_results_ready)
+        self.writer         = SheetsWriter(game_version=game_version)
+        self.listener       = TelemetryListener(game_version=game_version, on_race_end=self.on_race_end)
 
     def on_race_end(self, telemetry_summary):
         """
@@ -98,6 +100,7 @@ class StreamAssistant:
         """Start all components."""
         log.info("=" * 55)
         log.info("Stream Assistant Starting")
+        log.info(f"Game      : {self.game_version}")
         log.info(f"Gaming PC : {GAMING_PC_IP}")
         log.info(f"Log file  : {log_file}")
         log.info("=" * 55)
@@ -118,5 +121,14 @@ class StreamAssistant:
 # Entry point
 # =============================================================
 if __name__ == "__main__":
-    assistant = StreamAssistant()
+    parser = argparse.ArgumentParser(description="Stream Assistant")
+    parser.add_argument(
+        "--game",
+        choices=["FH5", "FH6"],
+        default="FH5",
+        help="Game version to track (default: FH5)"
+    )
+    args = parser.parse_args()
+
+    assistant = StreamAssistant(game_version=args.game)
     assistant.start()
