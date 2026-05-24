@@ -32,6 +32,11 @@ RACE_TYPE_MAP = [
     ("CIRCUIT",                 "Road Circuit",             True),
     ("SPRINT",                  "Road Sprint",              False),
     ("DRAG",                    "Drag Race",                False),
+    # Named map-wide races — no standard keyword in track name
+    ("COLOSSUS",                "Road Sprint",              False),
+    ("GOLIATH",                 "Road Sprint",              False),
+    ("TITAN",                   "Cross-Country",            False),
+    ("GAUNTLET",                "Dirt Trail",               False),
 ]
 RACE_TYPE_DEFAULT = ("Street Race", False)
 
