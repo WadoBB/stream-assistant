@@ -1,5 +1,9 @@
 # Forza Race Results Extractor — Project Context
 
+## Open To Do Items
+See `TODO.md` in the project root for active issues, planned features, and known limitations.
+Update it as part of any task that resolves or adds an item — don't wait to be asked.
+
 ## Working Directory and Branch — Read This First
 
 Always work in **`C:\StreamAssistant`** on the **`main`** branch.
