@@ -155,7 +155,7 @@ Rules:
 - opponents_ahead = only racers with a LOWER position number than mine
 - Strip club tags (text in square brackets) from gamertags
 - PI is the number shown next to the class badge (e.g. S1 900 → pi: 900)
-- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" if all racers appear to be in the same car model (stock/spec event); use "Standard" for all other races
+- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" only if ALL racers are in the same car model AND all have identical PI values (true spec/stock event); use "Standard" for all other races
 - Return valid JSON only, no markdown, no explanation"""
 
     try:
