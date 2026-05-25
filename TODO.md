@@ -16,6 +16,16 @@ same race, producing a second identical entry.
 telemetry.log timestamps to confirm the pause theory. See `telemetry_listener.py`
 `_handle_race_end` and the packet timeout path.
 
+### Pause Behavior — Telemetry Dropout
+Long in-game pauses cause the telemetry stream to go silent, triggering a false
+race-end via the 3-second packet timeout. This is the leading cause of duplicate
+entries and potentially other misfires. Need to review the timeout threshold and
+whether pauses can be distinguished from a genuine race end (e.g. by checking
+whether `is_race_on` returns cleanly when play resumes, or by extending the
+silence window before declaring race end).
+
+**See also:** Duplicate Entry Investigation item above.
+
 ### Bogus Screenshots in Processed Folder
 Screenshots of menus, maps, and pause screens are accumulating in
 `ai-computer/captures/processed/`. These appear to be caused by the known false-capture
@@ -30,6 +40,26 @@ Be careful — a previous attempt to tighten banner detection broke normal captu
 ---
 
 ## Planned
+
+### Win and Race Counts — Verify Correctness
+Current Races and Wins counts in the Cars tab may be incorrect. A column order fix
+may have resolved the Wins column but a full review is needed to confirm both counts
+are being tallied and written correctly. Run the `update_car_stats()` function against
+a known set of results and manually verify the output matches expected counts.
+
+### Google Apps Script — Spec Race Exclusion
+The `Forza Car Updater` Apps Script should not update the car favorite flag based on
+Spec Race results, since cars run with stock tunes and the data is not comparable to
+tuned race data. Review the script logic and add a check for `notes == "Spec Race"`
+to skip those rows when computing favorite status (same exclusion already applied
+in the Python `update_car_stats()` function).
+
+### Google Apps Script — Consider Moving to Python
+The Apps Script runs manually or on a schedule and manages computed columns
+(Win Rate, Best Time, Last Raced, Fav flag, Best by Track+Class tab). Consider
+migrating this logic into Python alongside `update_car_stats()` so all sheet
+updates happen automatically after every race, no manual intervention needed.
+Alternatively, review and improve the existing script if full migration is too large.
 
 ### Online vs Bot Race Detection
 Distinguish Open online races (against real players) from AI/drivatar races so
