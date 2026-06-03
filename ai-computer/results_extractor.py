@@ -155,7 +155,7 @@ Rules:
 - opponents_ahead = only racers with a LOWER position number than mine
 - Strip club tags (text in square brackets) from gamertags
 - PI is the number shown next to the class badge (e.g. S1 900 → pi: 900)
-- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" only if ALL racers are in the same car model AND all have identical PI values (true spec/stock event); use "Standard" for all other races
+- race_mode: use "Time Attack" if this is a solo timed event with no live opponents; use "Spec Race" ONLY if BOTH conditions are true simultaneously: (1) every racer on the scoreboard is in the exact same car model, AND (2) every racer has the exact same PI value — this means a true stock/spec event where the game forces identical cars; round-number PIs like 500, 600, 700, 800, 900 at class boundaries are normal tuned cars and do NOT indicate Spec Race unless the car model is also identical across all racers; use "Standard" for all other races
 - Return valid JSON only, no markdown, no explanation"""
 
     try:
@@ -198,6 +198,16 @@ Rules:
 
         track           = data.get("track_name", "Unknown")
         race_mode       = data.get("race_mode", "Standard")
+
+        # Sanity check: class-boundary PIs (500, 600, 700, 800, 900) are
+        # normal tuned cars — override a false Spec Race flag if my PI is
+        # one of these round numbers, since true spec events use odd stock PIs.
+        CLASS_BOUNDARY_PIS = {500, 600, 700, 800, 900}
+        if race_mode == "Spec Race":
+            my_pi = data.get("my_result", {}).get("pi")
+            if my_pi in CLASS_BOUNDARY_PIS:
+                log.warning(f"Overriding Spec Race flag — PI {my_pi} is a class boundary, not a stock tune")
+                race_mode = "Standard"
 
         if race_mode in SKIP_RACE_MODES:
             log.info(f"Skipping {race_mode} race - not recorded: {track}")
