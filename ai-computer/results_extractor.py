@@ -204,14 +204,21 @@ Rules:
             return "SKIP", None
 
         total_racers = data["my_result"].get("total_racers")
-        if total_racers is not None and total_racers < 3:
+        if total_racers is not None and total_racers < 2:
             log.info(f"Skipping race with only {total_racers} racer(s): {track}")
             return "SKIP", None
+
+        is_touge = (total_racers == 2)
 
         race_type, lap_based = derive_race_type(track)
         my              = data["my_result"]
 
-        notes = "Spec Race" if race_mode == "Spec Race" else ""
+        if race_mode == "Spec Race":
+            notes = "Spec Race"
+        elif is_touge:
+            notes = "Touge"
+        else:
+            notes = ""
 
         race_result = {
             "race_id":      race_id,
@@ -232,6 +239,11 @@ Rules:
         my_position     = my.get("position", 99)
         my_race_time    = my.get("race_time") or telemetry_summary.get("race_time")
         opponents       = []
+
+        # Touge and Spec Race opponents are not logged
+        if is_touge or race_mode == "Spec Race":
+            log.info(f"Skipping opponents tab for {notes} race")
+            return race_result, opponents
 
         for opp in data.get("opponents_ahead", []):
             gap = calculate_gap(my_race_time, opp.get("race_time"))
