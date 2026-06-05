@@ -28,9 +28,9 @@ _handler = RotatingFileHandler(
     backupCount=3
 )
 _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-logging.getLogger().addHandler(_handler)
 
 log = logging.getLogger(__name__)
+log.addHandler(_handler)
 
 # =============================================================
 # Race validity thresholds
@@ -228,8 +228,22 @@ class TelemetryListener:
         Called once per race at race start so we have material to compare FH5 vs FH6.
         All 4-byte-aligned offsets are decoded as float32 and int32; known fields
         are labelled. Only non-zero unknown values are printed to keep output readable.
+        Keeps only the 20 most recent pairs; older files are deleted automatically.
         """
         os.makedirs(PACKET_SAMPLE_FOLDER, exist_ok=True)
+
+        # Prune oldest samples — keep 20 most recent .bin files (and matching .txt)
+        existing = sorted(
+            [f for f in os.listdir(PACKET_SAMPLE_FOLDER) if f.endswith(".bin")],
+            reverse=True
+        )
+        for old_bin in existing[19:]:
+            for ext in (".bin", ".txt"):
+                path = os.path.join(PACKET_SAMPLE_FOLDER, old_bin.replace(".bin", ext))
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         stem = f"packet_{self.game_version}_{ts}_{len(data)}b"
         bin_path = os.path.join(PACKET_SAMPLE_FOLDER, stem + ".bin")

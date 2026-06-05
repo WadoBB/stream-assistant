@@ -242,12 +242,12 @@ Rules:
             "track":        track,
             "total_racers": my.get("total_racers"),
             "best_lap":     telemetry_summary.get("best_lap")  if lap_based else "",
-            "race_time":    my.get("race_time") or telemetry_summary.get("race_time"),
+            "race_time":    my.get("race_time") if time_to_seconds(my.get("race_time")) is not None else telemetry_summary.get("race_time"),
             "notes":        notes
         }
 
         my_position     = my.get("position", 99)
-        my_race_time    = my.get("race_time") or telemetry_summary.get("race_time")
+        my_race_time    = my.get("race_time") if time_to_seconds(my.get("race_time")) is not None else telemetry_summary.get("race_time")
         opponents       = []
 
         # Touge and Spec Race opponents are not logged
