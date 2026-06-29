@@ -40,8 +40,10 @@ RACE_TYPE_MAP = [
 ]
 RACE_TYPE_DEFAULT = ("Street Race", False)
 
-# Race modes that should be skipped entirely (not recorded)
-SKIP_RACE_MODES = {"Time Attack"}
+# Notes values that mark a race as non-competitive (no real opponents to beat)
+# — excluded from the Cars-tab Races/Wins tally but still recorded on the
+# Results tab so the lap/race time counts toward personal bests.
+NON_COMPETITIVE_NOTES = {"Spec Race", "Touge", "Time Attack"}
 
 # =============================================================
 # Logging
@@ -209,16 +211,9 @@ Rules:
                 log.warning(f"Overriding Spec Race flag — PI {my_pi} is a class boundary, not a stock tune")
                 race_mode = "Standard"
 
-        if race_mode in SKIP_RACE_MODES:
-            log.info(f"Skipping {race_mode} race - not recorded: {track}")
-            return "SKIP", None
-
         total_racers = data["my_result"].get("total_racers")
-        if total_racers is not None and total_racers < 2:
-            log.info(f"Skipping race with only {total_racers} racer(s): {track}")
-            return "SKIP", None
-
-        is_touge = (total_racers == 2)
+        is_touge     = (total_racers == 2)
+        is_solo      = (total_racers is not None and total_racers < 2) or race_mode == "Time Attack"
 
         race_type, lap_based = derive_race_type(track)
         my              = data["my_result"]
@@ -227,6 +222,8 @@ Rules:
             notes = "Spec Race"
         elif is_touge:
             notes = "Touge"
+        elif is_solo:
+            notes = "Time Attack"
         else:
             notes = ""
 
@@ -250,8 +247,8 @@ Rules:
         my_race_time    = my.get("race_time") if time_to_seconds(my.get("race_time")) is not None else telemetry_summary.get("race_time")
         opponents       = []
 
-        # Touge and Spec Race opponents are not logged
-        if is_touge or race_mode == "Spec Race":
+        # Non-competitive races (Touge, Spec Race, Time Attack) have no opponents tab entry
+        if notes in NON_COMPETITIVE_NOTES:
             log.info(f"Skipping opponents tab for {notes} race")
             return race_result, opponents
 
@@ -340,7 +337,7 @@ class ResultsExtractor:
             )
 
             if race_result == "SKIP":
-                # Intentional skip (e.g. Touge, Time Attack) - delete cleanly
+                # Intentional skip (e.g. Time Attack with no race time data) - delete cleanly
                 try:
                     os.remove(filepath)
                     log.info(f"Skipped race - deleted screenshot: {filename}")

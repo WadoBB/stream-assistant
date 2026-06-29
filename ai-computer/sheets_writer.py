@@ -12,6 +12,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from collections import defaultdict
 from config import SHEETS_CREDENTIALS, FH5_SPREADSHEET_ID, FH6_SPREADSHEET_ID, RESULTS_TAB, OPPONENTS_TAB, CARS_TAB
+from results_extractor import NON_COMPETITIVE_NOTES
 
 
 def _normalize_str(s):
@@ -152,11 +153,12 @@ class SheetsWriter:
             pos_col       = headers.index("position")
             class_col     = headers.index("class")
             race_type_col = headers.index("race_type")
+            notes_col     = headers.index("notes")
         except ValueError as e:
             log.error(f"Results tab missing expected column: {e}")
             return
 
-        need_cols = max(car_col, pos_col, class_col, race_type_col)
+        need_cols = max(car_col, pos_col, class_col, race_type_col, notes_col)
         races_by_key = defaultdict(int)
         wins_by_key  = defaultdict(int)
         for row in rows[1:]:
@@ -166,7 +168,13 @@ class SheetsWriter:
             pos       = row[pos_col].strip()
             cls       = row[class_col].strip()
             race_type = row[race_type_col].strip()
+            notes     = row[notes_col].strip()
             if not car:
+                continue
+            # Non-competitive races (Spec Race, Touge, Time Attack) have no
+            # real opponents to beat — exclude from Races/Wins so win rate
+            # isn't inflated by always-win solo/stock-tune events.
+            if notes in NON_COMPETITIVE_NOTES:
                 continue
             key = _car_key(car, cls, race_type)
             races_by_key[key] += 1

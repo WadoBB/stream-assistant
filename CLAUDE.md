@@ -108,18 +108,24 @@ Evaluated top-to-bottom; **first match wins.** Order matters — do not reorder.
 "CROSS COUNTRY CIRCUIT" must precede "CROSS COUNTRY" and "CIRCUIT" or those
 would match first.
 
-## Filtering Rules — Races That Are Skipped
-Some race results are automatically skipped and not recorded:
+## Filtering Rules — Non-Competitive Races
+No race is skipped purely for having few or no opponents — a lap/race time is
+still a valid personal best even in a solo Time Attack run or a 1v1 Touge race.
+Instead, races with no meaningful win/loss comparison are recorded normally on
+the Results tab but flagged via the Notes column so they don't pollute the
+Cars-tab Races/Wins tally:
 
-| Condition               | Reason                                                     |
-|-------------------------|------------------------------------------------------------|
-| `race_mode = "Time Attack"` | Solo timed events — no opponents, not meaningful for comparison |
-| `total_racers < 3`      | Filters out Touge races (1v1) and other sub-3-racer events |
+| Condition                                  | Notes value    |
+|---------------------------------------------|----------------|
+| `race_mode = "Spec Race"` (all racers same car + PI) | `"Spec Race"` |
+| `total_racers = 2`                          | `"Touge"`      |
+| `total_racers < 2`, or `race_mode = "Time Attack"` | `"Time Attack"` |
 
-**Spec Race** is recorded normally on both Results and Opponents tabs, but the
-Notes column is set to `"Spec Race"`. The Google Apps Script (`Forza Car Updater`)
-skips car stats updates for these rows because all cars run stock tunes — lap times
-are not comparable to tuned race data.
+Rows with any of these Notes values are excluded from the Opponents tab (no real
+opponents to log) and from the Races/Wins tally in `sheets_writer.py`'s
+`update_car_stats()` — since position is always 1 in these events, counting them
+would falsely inflate win rate. The Google Apps Script (`Forza Car Updater`)
+should apply the same exclusion when computing the Fav flag (see TODO.md).
 
 ## Known Limitation — Short Drag Races Are Skipped
 `MIN_RACE_DURATION_SECONDS = 30` in `telemetry_listener.py` filters out false

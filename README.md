@@ -489,14 +489,15 @@ Race type is derived from keywords in the track name returned by Claude. The map
 | DRAG | Drag Race |
 | *(no match)* | Street Race |
 
-**Races that are automatically skipped (not recorded):**
+**Non-competitive races (recorded normally, flagged so they don't skew win rate):**
 
-| Condition | Reason |
+| Condition | Notes value |
 |---|---|
-| `race_mode = "Time Attack"` | Solo timed events — no opponents, not meaningful for comparison |
-| `total_racers < 3` | Filters out Touge races (always 1v1) and other sub-3-racer events |
+| `race_mode = "Spec Race"` (all racers same car + PI) | `"Spec Race"` |
+| `total_racers = 2` | `"Touge"` |
+| `total_racers < 2`, or `race_mode = "Time Attack"` | `"Time Attack"` |
 
-**Spec Race** — recorded normally on the Results and Opponents tabs, but the Notes column is set to `"Spec Race"`. The Google Apps Script (`Forza Car Updater`) skips the car stats update for these rows because all cars are running stock tunes, making lap times incomparable to tuned race data.
+These races are still recorded on the Results tab — a lap/race time is a valid personal best even without real opponents — but rows with one of these Notes values are excluded from the Opponents tab and from the Races/Wins tally in `sheets_writer.py`'s `update_car_stats()`, since position is always 1 in these events and counting them would inflate win rate.
 
 ### Known Limitation — Short Drag Races Are Skipped
 

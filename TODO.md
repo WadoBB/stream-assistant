@@ -47,12 +47,14 @@ may have resolved the Wins column but a full review is needed to confirm both co
 are being tallied and written correctly. Run the `update_car_stats()` function against
 a known set of results and manually verify the output matches expected counts.
 
-### Google Apps Script — Spec Race Exclusion
+### Google Apps Script — Non-Competitive Race Exclusion
 The `Forza Car Updater` Apps Script should not update the car favorite flag based on
-Spec Race results, since cars run with stock tunes and the data is not comparable to
-tuned race data. Review the script logic and add a check for `notes == "Spec Race"`
-to skip those rows when computing favorite status (same exclusion already applied
-in the Python `update_car_stats()` function).
+Spec Race, Touge, or Time Attack results, since none of these have a real win/loss
+comparison (Spec Race is stock-tune only; Touge and Time Attack always show position 1).
+Review the script logic and add a check that skips rows where
+`notes` is one of `"Spec Race"`, `"Touge"`, `"Time Attack"` when computing favorite
+status — same exclusion now applied in the Python `update_car_stats()` function
+in `sheets_writer.py`.
 
 ### Google Apps Script — Consider Moving to Python
 The Apps Script runs manually or on a schedule and manages computed columns
