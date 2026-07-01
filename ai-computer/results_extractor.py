@@ -37,8 +37,21 @@ RACE_TYPE_MAP = [
     ("GOLIATH",                 "Road Sprint",              False),
     ("TITAN",                   "Cross-Country",            False),
     ("GAUNTLET",                "Dirt Trail",               False),
+    # FH6 Touge tracks — identified by full name, no keyword pattern
+    ("HAKONE NANMAGARI",        "Touge",                    False),
+    ("NORIKURA SKYLINE",        "Touge",                    False),
+    ("ARASHIYAMA TAKAO",        "Touge",                    False),
+    ("BANDI AZUMA",             "Touge",                    False),
+    ("MT. HARUNA",              "Touge",                    False),
+    # FH6 Street Race keywords — positively identified so the default can be Touge
+    ("RUN",                     "Street Race",              False),
+    ("CHARGE",                  "Street Race",              False),
+    ("DESCENT",                 "Street Race",              False),
+    ("CLIMB",                   "Street Race",              False),
+    ("KITA INE",                "Street Race",              False),
 ]
-RACE_TYPE_DEFAULT = ("Street Race", False)
+RACE_TYPE_DEFAULT_FH5 = ("Street Race", False)
+RACE_TYPE_DEFAULT_FH6 = ("Touge",       False)  # unmatched FH6 tracks are Touge
 
 # Notes values that mark a race as non-competitive (no real opponents to beat)
 # — excluded from the Cars-tab Races/Wins tally but still recorded on the
@@ -60,7 +73,7 @@ def load_api_client():
     return Anthropic(api_key=api_key)
 
 
-def derive_race_type(track_name):
+def derive_race_type(track_name, game_version="FH5"):
     """
     Derive race type and lap_based flag from track name.
     Returns (race_type_string, is_lap_based).
@@ -69,7 +82,7 @@ def derive_race_type(track_name):
     for keyword, race_type, lap_based in RACE_TYPE_MAP:
         if keyword in upper:
             return race_type, lap_based
-    return RACE_TYPE_DEFAULT
+    return RACE_TYPE_DEFAULT_FH6 if game_version == "FH6" else RACE_TYPE_DEFAULT_FH5
 
 
 def time_to_seconds(time_str):
@@ -212,10 +225,10 @@ Rules:
                 race_mode = "Standard"
 
         total_racers = data["my_result"].get("total_racers")
-        is_touge     = (total_racers == 2)
         is_solo      = (total_racers is not None and total_racers < 2) or race_mode == "Time Attack"
 
-        race_type, lap_based = derive_race_type(track)
+        race_type, lap_based = derive_race_type(track, game_version)
+        is_touge     = (race_type == "Touge")
         my              = data["my_result"]
 
         if race_mode == "Spec Race":
