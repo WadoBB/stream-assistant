@@ -169,6 +169,11 @@ class CaptureAgent:
                         log.info(f"Race end trigger received | Race ID: {race_id}")
                         wait_for_scoreboard(race_id)
 
+                    elif message.startswith("CAPTURE_NOW:"):
+                        race_id = message.split(":")[1]
+                        log.info(f"Manual capture trigger received | Race ID: {race_id}")
+                        capture_scoreboard(race_id)
+
                 except socket.timeout:
                     pass    # Normal - just keep listening
 
