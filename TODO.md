@@ -71,6 +71,16 @@ win rates can be tracked separately. A planned "Online" flag column in the Resul
 Packet samples are saved to `ai-computer/logs/packet_samples/` — diff the `.txt` files
 at every 4-byte offset to find a field that changes between modes.
 
+### Rivals Race Capture
+Rivals races do not set the `is_race_on` telemetry flag, so the system never detects
+them as a race and no screenshot is triggered. Rivals times would be valuable personal
+best data, particularly for track+class combinations.
+
+**Next step:** Design a capture path that doesn't rely on `is_race_on`. Options include:
+- A manual trigger (Stream Deck button) to force a scoreboard screenshot at race end
+- Detecting the Rivals results screen via the capture agent using a different visual signal
+- A separate Rivals mode that watches for the results screen independently of telemetry
+
 ### Multi-Lap Colossus / Goliath
 The Colossus and Goliath are mapped as `lap_based=False` (Road Sprint) because they
 are normally single-lap races. If a custom race is set up with multiple laps,
