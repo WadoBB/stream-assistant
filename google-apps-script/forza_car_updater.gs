@@ -6,7 +6,7 @@
  *  (including the Fav flag), refreshes the "Best by Track+Class" tab, and
  *  logs the run to the "Analysis Log" tab.
  *
- *  Author: Benny  |  Version: 1.7  |  Last revised: 2026-07-01
+ *  Author: Benny  |  Version: 1.8  |  Last revised: 2026-07-01
  *
  *  PREREQUISITE: the Cars tab must have a column named "Car Name" — Forza's
  *  short, unique identifier for each car.  This is the only field used to
@@ -81,6 +81,7 @@ const CONFIG = {
     'street':                  'Road',
     'street race':             'Road',
     'touge':                   'Road',    // FH6 Touge races are street-based
+    'touge race':              'Road',    // defensive: guard against manual typo
     // Dirt family
     'dirt':                    'Dirt',
     'dirt circuit':            'Dirt',
@@ -461,7 +462,7 @@ function readResults_(ss) {
     // but excluded from car stats — position is always 1 in these events so
     // counting them would falsely inflate win rates and race counts.
     const notes = String(r[h[H.NOTES]] || '').trim();
-    if (notes === 'Spec Race' || notes === 'Touge' || notes === 'Time Attack') continue;
+    if (notes === 'Spec Race' || notes === 'Touge' || notes === 'Touge Race' || notes === 'Time Attack') continue;
 
     out.push({
       rowNum:      i + 1,
