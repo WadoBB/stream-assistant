@@ -101,27 +101,6 @@ def toggle():
                 return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@app.route("/capture_now", methods=["GET"])
-def capture_now():
-    """
-    Trigger an immediate scoreboard capture on the gaming PC.
-    Used for Rivals races and any other case where telemetry doesn't fire.
-    """
-    import socket as _socket
-    from datetime import datetime
-    race_id = "manual_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-    message = f"CAPTURE_NOW:{race_id}".encode("utf-8")
-    try:
-        sock = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
-        sock.sendto(message, (GAMING_PC_IP, CAPTURE_AGENT_PORT))
-        sock.close()
-        log.info(f"Manual capture triggered | Race ID: {race_id}")
-        return jsonify({"status": "ok", "race_id": race_id})
-    except Exception as e:
-        log.error(f"Failed to send manual capture trigger: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 @app.route("/status", methods=["GET"])
 def status():
     """Return current pipeline status."""
