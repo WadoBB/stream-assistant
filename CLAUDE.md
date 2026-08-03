@@ -141,12 +141,22 @@ storyline requirements and weekly challenges.
 for that case. A simple threshold reduction risks letting early quits through.
 
 ## Scoreboard Time vs Telemetry Time
-Race time is captured from the **scoreboard screenshot**, not from the telemetry.
-This was an intentional fix — the last telemetry record before end-of-race did
-not reliably match the actual race time shown on the scoreboard.
+Both **race time** and **best lap time** are captured from the **scoreboard
+screenshot**, not from the telemetry. This was an intentional fix — the last
+telemetry record before end-of-race did not reliably match the actual times
+shown on the scoreboard.
 
 The code prefers the scoreboard value and falls back to telemetry only if the
-scoreboard value is missing. Do not revert this behavior.
+scoreboard value is missing/unparseable. Do not revert this behavior.
+
+**2026-08-02 correction:** the original fix (`results_extractor.py`'s
+`extract_results()`) only applied this scoreboard-preferred logic to
+`race_time`. `best_lap` was left reading straight from `telemetry_summary`,
+so lap-based races (Circuit, Trail, Scramble, etc.) kept recording the
+telemetry best lap, which could read higher than the scoreboard's value.
+Fixed so `best_lap` now mirrors `race_time`'s scoreboard-first, telemetry-fallback
+pattern. If you're touching this logic again, verify **both** fields use the
+same pattern — they're easy to fix one at a time and forget the other.
 
 ## Race Condition Fix — Temp Save and Rename
 A race condition existed where the AI computer would attempt to process a screenshot
