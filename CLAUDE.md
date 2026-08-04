@@ -91,7 +91,8 @@ changed to use "Dirt Point to Point" — this was incorrect and has been reverte
 Always use **Dirt Trail**.
 
 ## Race Type Detection
-Race type is derived from keywords in the track name returned by Claude.
+Race type is derived from keywords in the track name returned by Claude, via
+`RACE_TYPE_MAP` in `results_extractor.py`'s `derive_race_type()`.
 Evaluated top-to-bottom; **first match wins.** Order matters — do not reorder.
 
 | Keyword in Track Name | Race Type Recorded     |
@@ -103,10 +104,31 @@ Evaluated top-to-bottom; **first match wins.** Order matters — do not reorder.
 | CIRCUIT               | Road Circuit           |
 | SPRINT                | Road Sprint            |
 | DRAG                  | Drag Race              |
-| *(no match)*          | Street Race            |
+| COLOSSUS, GOLIATH     | Road Sprint            |
+| TITAN                 | Cross-Country          |
+| GAUNTLET              | Dirt Trail             |
 
 "CROSS COUNTRY CIRCUIT" must precede "CROSS COUNTRY" and "CIRCUIT" or those
 would match first.
+
+**FH6 Touge tracks** are matched by full track name (no shared keyword):
+HAKONE NANMAGARI, NORIKURA SKYLINE, ARASHIYAMA TAKAO, BANDI AZUMA, MT. HARUNA
+→ all recorded as `Touge`.
+
+**FH6 Street Race keywords** (checked after the Touge list, since Touge tracks
+are matched first): RUN, CHARGE, DESCENT, CLIMB, ASCENT, CHASE, KITA INE
+→ all recorded as `Street Race`.
+
+**Default (no match):** `Street Race` for both FH5 and FH6
+(`RACE_TYPE_DEFAULT_FH5` / `RACE_TYPE_DEFAULT_FH6`). The FH6 default was
+briefly set to `Touge` (commit `984dd92`, assuming any unmatched FH6 track
+was more likely an untracked Touge run) — this incorrectly labeled street
+races whose track names didn't contain one of the keywords above as Touge.
+Fixed 2026-08-04 by adding the missing ASCENT/CHASE keywords and reverting
+the default to Street Race, since real Touge tracks are already positively
+matched by name — the Touge default added no value and only mislabeled
+unmatched street races. If new unmatched Touge tracks turn up, add them to
+the explicit name list above rather than changing the default again.
 
 ## Filtering Rules — Non-Competitive Races
 No race is skipped purely for having few or no opponents — a lap/race time is
@@ -118,8 +140,13 @@ Cars-tab Races/Wins tally:
 | Condition                                  | Notes value    |
 |---------------------------------------------|----------------|
 | `race_mode = "Spec Race"` (all racers same car + PI) | `"Spec Race"` |
-| `total_racers = 2`                          | `"Touge"`      |
+| `race_type = "Touge"` (track name match — see Race Type Detection) | `"Touge"` |
 | `total_racers < 2`, or `race_mode = "Time Attack"` | `"Time Attack"` |
+
+**Note:** Touge detection used to be `total_racers = 2`, which produced false
+positives on 2-person online races. As of commit `984dd92` (2026-07-01) it's
+derived from `race_type == "Touge"` (track name match) instead — see Race Type
+Detection above.
 
 Rows with any of these Notes values are excluded from the Opponents tab (no real
 opponents to log) and from the Races/Wins tally in `sheets_writer.py`'s

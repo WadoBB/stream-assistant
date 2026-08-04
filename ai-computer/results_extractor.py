@@ -43,15 +43,17 @@ RACE_TYPE_MAP = [
     ("ARASHIYAMA TAKAO",        "Touge",                    False),
     ("BANDI AZUMA",             "Touge",                    False),
     ("MT. HARUNA",              "Touge",                    False),
-    # FH6 Street Race keywords — positively identified so the default can be Touge
+    # FH6 Street Race keywords — positively identified
     ("RUN",                     "Street Race",              False),
     ("CHARGE",                  "Street Race",              False),
     ("DESCENT",                 "Street Race",              False),
     ("CLIMB",                   "Street Race",              False),
+    ("ASCENT",                  "Street Race",              False),
+    ("CHASE",                   "Street Race",              False),
     ("KITA INE",                "Street Race",              False),
 ]
 RACE_TYPE_DEFAULT_FH5 = ("Street Race", False)
-RACE_TYPE_DEFAULT_FH6 = ("Touge",       False)  # unmatched FH6 tracks are Touge
+RACE_TYPE_DEFAULT_FH6 = ("Street Race", False)  # Touge tracks are matched explicitly above
 
 # Notes values that mark a race as non-competitive (no real opponents to beat)
 # — excluded from the Cars-tab Races/Wins tally but still recorded on the
