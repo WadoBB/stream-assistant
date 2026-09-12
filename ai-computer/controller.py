@@ -10,12 +10,14 @@
 # =============================================================
 
 import os
+import json
 import logging
 import subprocess
 import threading
 from logging.handlers import RotatingFileHandler
-from flask import Flask, jsonify, request
-from config import CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER
+from flask import Flask, jsonify, request, send_file
+from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
+                     OVERLAY_HTML, OVERLAY_STATE_FILE)
 
 MAIN_SCRIPT = r"C:\StreamAssistant\ai-computer\main.py"
 PYTHON_EXE = r"C:\Users\benny\AppData\Local\Programs\Python\Python313\python.exe"
@@ -114,6 +116,36 @@ def status():
 def health():
     """Health check - confirms controller is reachable."""
     return jsonify({"status": "ok"})
+
+
+@app.route("/overlay", methods=["GET"])
+def overlay_page():
+    """
+    Serves the stream overlay page. Point an OBS Browser Source at
+    http://<AI_COMPUTER_IP>:<CONTROLLER_PORT>/overlay - the page polls
+    /overlay/state itself, so nothing else needs to be configured in OBS.
+    Runs on controller.py (always-on) rather than main.py (toggled per
+    session) so the Browser Source doesn't go blank between sessions.
+    """
+    return send_file(OVERLAY_HTML)
+
+
+@app.route("/overlay/state", methods=["GET"])
+def overlay_state():
+    """
+    Returns the current overlay event as JSON, written by sheets_writer.py's
+    check_for_new_record() whenever a race beats the cached Best by
+    Track+Class time. Returns {} if no event has been recorded yet or the
+    file can't be read - the overlay page treats that as "nothing to show".
+    """
+    if not os.path.exists(OVERLAY_STATE_FILE):
+        return jsonify({})
+    try:
+        with open(OVERLAY_STATE_FILE) as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+        log.warning(f"Could not read overlay state file: {e}")
+        return jsonify({})
 
 
 # =============================================================

@@ -11,6 +11,8 @@ ai-computer/credentials/google_sheets.json
 ai-computer/captures/
 ai-computer/logs/
 gaming-pc/logs/
+ai-computer/overlay/state.json
+ai-computer/overlay/state.json.tmp
 
 # --- Python ---
 __pycache__/

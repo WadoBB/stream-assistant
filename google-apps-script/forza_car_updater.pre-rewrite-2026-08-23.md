@@ -1,3 +1,39 @@
+# forza_car_updater.gs — snapshot before rewrite (2026-08-23)
+
+Archived copy of `google-apps-script/forza_car_updater.gs` as it stood
+immediately before a planned rewrite, kept for reference/rollback.
+
+## Known state at time of archiving
+
+- Deployed to at least one of the FH5/FH6 spreadsheets, Cars tab column N
+  (Races) comes back completely blank (not `0`, not a formula — genuinely
+  empty per the formula bar) after a run, while column O (Wins) shows a real
+  mix of blank/`0`/higher values. This is not explainable from the code below:
+  `applyUpdates_` computes and writes Races and Wins from the same `stats`
+  object in the same loop iteration via the same batch-write pattern, and
+  `sheets_writer.py` (the other writer) writes both columns together in one
+  atomic range update (`N{row}:O{row}`) — neither writer has a code path that
+  touches one column without the other. Root cause not found before the
+  decision to rewrite.
+- `CONFIG.CARS_HEADERS.FH6` is set to `'FH6'`, but at least one live Cars tab
+  has that column literally named `Cnt` instead — a real mismatch, though the
+  code (`appendNewCars_`) already handles a missing/renamed FH6 column
+  gracefully (skips stamping the ownership marker rather than crashing).
+- Never fully confirmed whether the FH5 and FH6 spreadsheets' Cars tabs
+  actually share the same column layout — conversation surfaced this as an
+  open question right before the rewrite decision. The user's last message
+  before this archive noted the FH6 `CARS_HEADERS` config "doesn't even have
+  Races and Wins listed."
+- `resolveCol_()` (added this session) verifies each computed-column header
+  lookup against the live sheet and throws a specific error on mismatch,
+  intended to convert this whole class of silent-wrong-column bug into a
+  loud, diagnosable one. Whether it was ever actually run against the sheet
+  showing the blank-Races symptom was not confirmed before the rewrite
+  decision.
+
+## Full source at time of archiving
+
+```javascript
 /**
  * ============================================================================
  *  Forza Car Updater  —  Google Apps Script
@@ -6,24 +42,7 @@
  *  (including the Fav flag), refreshes the "Best by Track+Class" tab, and
  *  logs the run to the "Analysis Log" tab.
  *
- *  Author: Benny  |  Version: 2.1  |  Last revised: 2026-08-23
- *
- *  v2.1 (2026-08-23): Best Time and Last Raced are no longer written to the
- *  Cars tab at all (dropped from COMPUTED_COLS and applyUpdates_) - those are
- *  per-(Track,Class) values that live exclusively on the Best by Track+Class
- *  tab. Removing them stops the Cars tab from silently recreating them if
- *  deleted. Also removed the now-dead global best-time tracking from
- *  aggregatePerCar_ (nothing read it once Cars tab stopped writing it).
- *
- *  v2.0 (2026-08-23): Races/Wins on the Cars tab always written together
- *  (never one without the other). Win Rate moved off Best by Track+Class and
- *  pinned to a fixed column (P) on the Cars tab instead of auto-appended
- *  wherever. Races also removed from Best by Track+Class - that tab now only
- *  shows the record holder and time per (Track, Class), no per-car totals.
- *  Year/MFG/Model backfill now also runs against existing rows, not just
- *  newly-added ones. Added "Debug One Car" for direct per-car diagnosis, and
- *  resolveCol_() to verify every computed-column lookup against the live
- *  header before writing to it.
+ *  Author: Benny  |  Version: 1.8  |  Last revised: 2026-07-01
  *
  *  PREREQUISITE: the Cars tab must have a column named "Car Name" — Forza's
  *  short, unique identifier for each car.  This is the only field used to
@@ -44,17 +63,13 @@
  *  WHAT IT DOES (per run)
  *   - Reads the Results tab and matches each row to a Cars row by exact
  *     (Car Name, Class, Race Type) match.
- *   - Updates Races, Wins, and Win Rate on the Cars tab for every row - Win
- *     Rate always at column P, Races/Wins appended automatically if missing
- *     and always written together so they can't drift out of sync with each
- *     other.  Best Time and Last Raced are NOT written to the Cars tab -
- *     those are per-(Track,Class) values that live only on the Best by
- *     Track+Class tab.
- *   - Backfills Year/MFG/Model from any other row with the same Car Name,
- *     for any row (new or existing) still missing one of those three fields.
+ *   - Adds computed columns to Cars (if missing): Win Rate, Races, Best Time,
+ *     Last Raced.  Refreshes those values for every row.
  *   - Auto-adds any (Car Name, Class, Race Type) combo seen in Results but
  *     missing from the Cars tab.  New rows always get Car Name, Class, Type,
  *     and (if the FH6 column exists) a '1' in FH6 to flag the car as owned.
+ *     If another existing row has the same Car Name, that row's Year/MFG/Model
+ *     are carried over so the new row lands in the right place when sorted.
  *   - Rewrites the Fav column per Benny's rules:
  *        Y = holds the record on at least one (Track, Class) — i.e. the car
  *            is competitive somewhere.  M cars are excluded from the contest.
@@ -65,8 +80,7 @@
  *        blank/other = left as-is
  *      Y wins over W if a car qualifies for both.
  *   - Rebuilds the "Best by Track+Class" tab — one row per (Track, Class)
- *     showing the record-holding car and its time only (no per-car totals -
- *     those live exclusively on the Cars tab).
+ *     showing the record-holding car, its time, and its stats.
  *   - Appends a row to "Analysis Log" summarising the run.
  *
  *  TUNING
@@ -87,18 +101,18 @@ const CONFIG = {
   W_MIN_RACES:    3,
   W_MIN_WIN_RATE: 0.50,   // 50% — fraction of races finished in 1st place
 
-  // Columns this script computes and writes to the Cars tab on every run.
-  // Appended automatically (at the end) if missing; otherwise reused as-is.
-  // Win Rate is NOT here - it has a fixed position (column P) maintained by
-  // ensureWinRateAtColumnP_ instead of being auto-appended wherever the last
-  // column happens to be. Races and Wins are always written together in the
-  // same pass in applyUpdates_, so they can't drift apart from each other
-  // (sheets_writer.py also writes them in real time after each race - see
-  // CLAUDE.md's "Google Sheets Structure" section for why both writers are
-  // intentional). Best Time and Last Raced are deliberately NOT here - those
-  // are per-(Track,Class) record values and live exclusively on the Best by
-  // Track+Class tab (rebuildBestByTab_), not per-car totals on the Cars tab.
-  COMPUTED_COLS: ['Races', 'Wins'],
+  // Computed columns appended to the Cars tab if they don't already exist.
+  // Races and Wins are both here (see applyUpdates_) because this script is
+  // the ONLY writer that can also auto-add a brand-new Cars row (via
+  // appendNewCars_) and populate its stats in the same run — sheets_writer.py's
+  // real-time update_car_stats() can only ever update a row that already
+  // exists, so a car raced for the first time tonight gets nothing from it
+  // until the Cars row exists. Previously this script wrote Races but never
+  // Wins, so a car that fell out of match on a given run (e.g. a Results row
+  // got deleted) had its Races zeroed while Wins stayed stale — the two
+  // drifted apart. Fixed by having this script own both together, always
+  // written/zeroed in the same pass, so they can never disagree.
+  COMPUTED_COLS: ['Win Rate', 'Races', 'Wins', 'Best Time', 'Last Raced'],
 
   // Race Type canonicalisation.  Both Cars.Type and Results.'Race Type' are
   // run through this map (case-insensitive).  Anything not listed is kept
@@ -152,8 +166,6 @@ function onOpen() {
     .createMenu('Forza')
     .addItem('Update Cars (run now)', 'runUpdate')
     .addItem('Diagnose Matching (read-only)', 'diagnoseMatching')
-    .addItem('Debug One Car (read-only)', 'debugOneCar_')
-    .addItem('Inspect Cars Header Row (read-only)', 'inspectCarsHeaders_')
     .addSeparator()
     .addItem('Enable Daily Schedule', 'enableDailyTrigger')
     .addItem('Disable Daily Schedule', 'disableDailyTrigger')
@@ -168,8 +180,7 @@ function runUpdate() {
   // Show a brief popup so the user knows it finished.
   SpreadsheetApp.getActive().toast(
     `Done. ${summary.carsUpdated} cars updated, ` +
-    `${summary.carsAdded} added, ${summary.catalogFilled} filled from catalog, ` +
-    `${summary.unresolved} unresolved, ` +
+    `${summary.carsAdded} added, ${summary.unresolved} unresolved, ` +
     `${summary.excludedByNotes} rows excluded by Notes (Spec/Touge/Time Attack).`,
     'Forza Car Updater', 8
   );
@@ -302,136 +313,6 @@ function charCodes_(s) {
     .map(c => `${c}(${c.charCodeAt(0)})`).join(' ');
 }
 
-/**
- * READ-ONLY diagnostic for one car. Prompts for a substring of a Car Name,
- * then shows exactly what the script sees for it on both tabs: every
- * matching Cars row (with its computed key, and whether that row actually
- * falls inside the block applyUpdates_ processes), and every matching
- * Results row (with its computed key, canonical Type, Notes, and whether it
- * matches a Cars row). This answers "why isn't this car updating" directly,
- * instead of guessing from the aggregate toast/log numbers.
- */
-function debugOneCar_() {
-  const ui = SpreadsheetApp.getUi();
-  const resp = ui.prompt('Debug One Car',
-    'Enter part of the Car Name to search for (e.g. "Chevelle"):',
-    ui.ButtonSet.OK_CANCEL);
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const needle = normalize_(resp.getResponseText());
-  if (!needle) return;
-
-  const ss      = SpreadsheetApp.getActive();
-  const cars    = readCars_(ss);
-  const results = readResults_(ss);
-
-  const firstRow = cars.rows.length ? cars.rows[0].rowNum : null;
-  const lastRow  = cars.rows.length ? cars.rows[cars.rows.length - 1].rowNum : null;
-
-  const lines = [];
-  lines.push(`Search: "${needle}"`);
-  lines.push(`Cars tab: ${cars.rows.length} named rows, spanning sheet rows ${firstRow}-${lastRow}.`);
-  lines.push('');
-  lines.push('--- Matching Cars tab rows ---');
-  let carsFound = 0;
-  for (const c of cars.rows) {
-    if (!normalize_(c.carName).includes(needle)) continue;
-    carsFound++;
-    const inBlock = c.rowNum >= firstRow && c.rowNum <= lastRow;
-    lines.push(`Row ${c.rowNum}: "${c.carName}" | Class="${c.class}" | Type="${c.type}"`);
-    lines.push(`   key = ${carObjKey_(c)}`);
-    lines.push(`   inside the block this script writes to: ${inBlock}`);
-  }
-  if (!carsFound) lines.push('(no Cars rows matched that text)');
-
-  lines.push('');
-  lines.push('--- Matching Results tab rows ---');
-  let resultsFound = 0, matched = 0;
-  for (const r of results) {
-    if (!normalize_(r.car).includes(needle)) continue;
-    resultsFound++;
-    const k = makeCarKey_(r.car, r.class, r.raceType);
-    const hit = cars.byKey.has(k);
-    if (hit) matched++;
-    lines.push(`Row ${r.rowNum}: "${r.car}" | Class="${r.class}" | Type(canon)="${r.raceType}" | ` +
-      `Pos=${r.position} | Notes="${r.notes || '(blank)'}"`);
-    lines.push(`   key = ${k}`);
-    lines.push(`   matches a Cars row: ${hit}`);
-  }
-  if (!resultsFound) {
-    lines.push('(no Results rows matched that text - check spelling, or every ' +
-      'matching row may have Notes = Spec Race/Touge/Time Attack and gets excluded ' +
-      'before this point - see readResults_)');
-  } else {
-    lines.push('');
-    lines.push(`${matched} of ${resultsFound} matching Results row(s) match a Cars row.`);
-  }
-
-  Logger.log(lines.join('\n'));
-  ui.alert('Debug One Car', lines.join('\n'), ui.ButtonSet.OK);
-}
-
-/**
- * READ-ONLY diagnostic: scans every header cell on the Cars tab and flags any
- * whose text *looks* like a known label (Races, Wins, Win Rate, Best Time,
- * Last Raced, Car Name, Class, Type, Fav, etc. - normalized-equal, ignoring
- * case/smart-quotes/dashes/spacing) but does NOT exactly string-match it.
- * A flagged column is invisible to every exact-match header lookup in this
- * script (resolveCol_, hmap, ensureComputedColumns_) even though it reads
- * correctly to a human - almost always a stray invisible character (trailing
- * space, non-breaking space, or a lookalike Unicode character) left over from
- * typing or pasting at some point. Shows the raw char codes for anything
- * flagged so the exact difference is visible, not just suspected.
- */
-function inspectCarsHeaders_() {
-  const ui    = SpreadsheetApp.getUi();
-  const ss    = SpreadsheetApp.getActive();
-  const sheet = ss.getSheetByName(CONFIG.CARS_SHEET);
-  if (!sheet) { ui.alert('Cars tab not found.'); return; }
-
-  const lastCol = sheet.getLastColumn();
-  const raw = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-
-  const KNOWN = ['Races', 'Wins', 'Win Rate', 'Best Time', 'Last Raced',
-    CONFIG.CARS_HEADERS.FH6, CONFIG.CARS_HEADERS.YEAR, CONFIG.CARS_HEADERS.MFG,
-    CONFIG.CARS_HEADERS.MODEL, CONFIG.CARS_HEADERS.CAR_NAME, CONFIG.CARS_HEADERS.CLASS,
-    CONFIG.CARS_HEADERS.TYPE, CONFIG.CARS_HEADERS.FAV];
-
-  const lines = [];
-  lines.push(`Cars tab has ${lastCol} columns.`);
-  lines.push('');
-
-  let flagged = 0;
-  for (let i = 0; i < raw.length; i++) {
-    const col = i + 1;
-    const text = String(raw[i]);
-    const trimmed = text.trim();
-    if (!trimmed) continue;
-
-    const exactHit = KNOWN.includes(trimmed);
-    const fuzzyHit = KNOWN.some(k => normalize_(k) === normalize_(trimmed));
-
-    if (fuzzyHit && !exactHit) {
-      flagged++;
-      lines.push(`Column ${columnLetter_(col)}: LOOKS LIKE A KNOWN LABEL BUT DOESN'T EXACTLY MATCH`);
-      lines.push(`   raw text: "${text}"`);
-      lines.push(`   char codes: ${charCodes_(text)}`);
-      lines.push('');
-    } else if (exactHit) {
-      lines.push(`Column ${columnLetter_(col)}: "${trimmed}" - exact match, OK`);
-    }
-  }
-
-  if (!flagged) {
-    lines.push('No hidden-character mismatches found among known label columns.');
-  } else {
-    lines.push(`${flagged} column(s) flagged above - almost certainly the source of ` +
-      `any duplicate-column problem.`);
-  }
-
-  Logger.log(lines.join('\n'));
-  ui.alert('Inspect Cars Header Row', lines.join('\n'), ui.ButtonSet.OK);
-}
-
 /** Removes any existing time-based triggers for this script. */
 function disableDailyTrigger() {
   ScriptApp.getProjectTriggers()
@@ -514,7 +395,6 @@ function updateForzaCars_() {
     wPromoted:    favTransitions.wPromoted,
     yToP:         favTransitions.yToP,
     wToR:         favTransitions.wToR,
-    catalogFilled: favTransitions.catalogFilled,
     unresolvedSamples: unresolved.slice(0, 5).join(' | ')
   };
   appendLog_(ss, summary);
@@ -539,12 +419,6 @@ function readCars_(ss) {
   const sheet = ss.getSheetByName(CONFIG.CARS_SHEET);
   if (!sheet) throw new Error(`Sheet "${CONFIG.CARS_SHEET}" not found.`);
 
-  // Fix Win Rate's position (if needed) before reading anything else, so
-  // every header/index computed below reflects the sheet's final shape for
-  // this run - inserting/deleting a column here would otherwise invalidate
-  // any header positions already read.
-  ensureWinRateAtColumnP_(sheet);
-
   const values = sheet.getDataRange().getValues();
   if (values.length < 2) throw new Error('Cars tab appears empty.');
 
@@ -568,12 +442,10 @@ function readCars_(ss) {
   const rows       = [];
   const byKey      = new Map();
   const byCarName  = new Map();   // normalize(carName) -> {year, mfg, model}
-                                  // Catalog of Year/MFG/Model by Car Name,
-                                  // used to fill those fields on any row that's
-                                  // missing them - both a brand-new
-                                  // (Car Name, Class, Type) row at creation
-                                  // (appendNewCars_) and an existing row that's
-                                  // still blank (applyUpdates_'s backfill pass).
+                                  // catalog used when auto-adding a new
+                                  // (Car Name, Class, Type) row so we can
+                                  // inherit Year/MFG/Model from another row
+                                  // that has the same Car Name.
 
   for (let i = 1; i < valuesNow.length; i++) {
     const r = valuesNow[i];
@@ -675,10 +547,11 @@ function readResults_(ss) {
  * Aggregates per-car stats from matched (result -> car) pairs.
  * Returns Map(carKey -> stats):
  *   { car: rowObj, races, wins, winRate,
+ *     bestTimeSec, bestTimeSource ('lap' | 'race'),
+ *     bestTimeRace,                       // result row that produced bestTime
  *     lastRaced (Date),
  *     classCounts: Map(class -> n),
- *     typeCounts:  Map(type  -> n),
- *     bestByTC:    Map((Track,Class) -> best time) }
+ *     typeCounts:  Map(type  -> n) }
  */
 function aggregatePerCar_(matched) {
   const stats = new Map();
@@ -689,13 +562,14 @@ function aggregatePerCar_(matched) {
       stats.set(k, {
         car: m.carRow,
         races: 0, wins: 0,
+        bestTimeSec: null, bestTimeSource: null, bestTimeRace: null,
         lastRaced: null,
         classCounts: new Map(),
         typeCounts:  new Map(),
-        // Per-(Track, Class) best times — used for Y-flag ranking and the
-        // Best by Track+Class tab. A car becomes Y if it holds the record in
-        // at least one (Track, Class) bucket. Keyed "track||class"
-        // (lower-cased), value carries time, source, and the result row.
+        // Per-(Track, Class) best times — used for Y-flag ranking.  A car
+        // becomes Y if it holds the record in at least one (Track, Class)
+        // bucket.  Keyed "track||class" (lower-cased), value carries time,
+        // source, and the result row that produced the time.
         bestByTC:   new Map()
       });
     }
@@ -708,6 +582,13 @@ function aggregatePerCar_(matched) {
                 m.result.raceTimeSec != null ? m.result.raceTimeSec : null;
     const src = m.result.bestLapSec  != null ? 'lap' :
                 m.result.raceTimeSec != null ? 'race' : null;
+
+    // Global best (used for the Cars tab "Best Time" column).
+    if (t != null && (s.bestTimeSec == null || t < s.bestTimeSec)) {
+      s.bestTimeSec = t;
+      s.bestTimeSource = src;
+      s.bestTimeRace   = m.result;
+    }
 
     // Per-(Track, Class) best (used for Y ranking).
     if (t != null && m.result.track && m.result.class) {
@@ -787,24 +668,15 @@ function applyUpdates_(ss, cars, stats, yWinners) {
   // not - see its doc comment for why this exists.
   const colFav   = resolveCol_(sheet, hmap, CONFIG.CARS_HEADERS.FAV);
   const colType  = resolveCol_(sheet, hmap, CONFIG.CARS_HEADERS.TYPE);
-  const colYear  = resolveCol_(sheet, hmap, CONFIG.CARS_HEADERS.YEAR);
-  const colMfg   = resolveCol_(sheet, hmap, CONFIG.CARS_HEADERS.MFG);
-  const colModel = resolveCol_(sheet, hmap, CONFIG.CARS_HEADERS.MODEL);
   const colWinR  = resolveCol_(sheet, hmap, 'Win Rate');
   const colRaces = resolveCol_(sheet, hmap, 'Races');
   const colWins  = resolveCol_(sheet, hmap, 'Wins');
-
-  // Trace exactly which physical columns got resolved - visible in the Apps
-  // Script editor under Executions after a real "Update Cars" run. If Races
-  // or Wins ever resolves somewhere unexpected, this line shows it directly
-  // instead of requiring another round of manual cell-checking.
-  Logger.log(`applyUpdates_: Fav=${columnLetter_(colFav+1)} Type=${columnLetter_(colType+1)} ` +
-    `Year=${columnLetter_(colYear+1)} Mfg=${columnLetter_(colMfg+1)} Model=${columnLetter_(colModel+1)} ` +
-    `WinRate=${columnLetter_(colWinR+1)} Races=${columnLetter_(colRaces+1)} Wins=${columnLetter_(colWins+1)}`);
+  const colBestT = resolveCol_(sheet, hmap, 'Best Time');
+  const colLastR = resolveCol_(sheet, hmap, 'Last Raced');
 
   // Bail early if there are no data rows — nothing to update.
   if (!cars.rows.length) {
-    return { touched: 0, yPromoted: 0, wPromoted: 0, yToP: 0, wToR: 0, catalogFilled: 0 };
+    return { touched: 0, yPromoted: 0, wPromoted: 0, yToP: 0, wToR: 0 };
   }
 
   // cars.rows contains row objects with their original rowNum.  We use a
@@ -813,40 +685,23 @@ function applyUpdates_(ss, cars, stats, yWinners) {
   const firstRow = cars.rows[0].rowNum;
   const lastRow  = cars.rows[cars.rows.length - 1].rowNum;
   const nRows = lastRow - firstRow + 1;
-  Logger.log(`applyUpdates_: processing ${cars.rows.length} named rows, ` +
-    `block spans sheet rows ${firstRow}-${lastRow} (${nRows} rows incl. any blank-name gaps)`);
 
   // Build per-column write buffers (read-modify-write so blank rows in the
   // middle of the data block aren't overwritten).
   const winR    = sheet.getRange(firstRow, colWinR + 1,  nRows, 1).getValues();
   const races   = sheet.getRange(firstRow, colRaces + 1, nRows, 1).getValues();
   const wins    = sheet.getRange(firstRow, colWins + 1,  nRows, 1).getValues();
+  const bestT   = sheet.getRange(firstRow, colBestT + 1, nRows, 1).getValues();
+  const lastR   = sheet.getRange(firstRow, colLastR + 1, nRows, 1).getValues();
   const favCol  = sheet.getRange(firstRow, colFav + 1,   nRows, 1).getValues();
   const typeCol = sheet.getRange(firstRow, colType + 1,  nRows, 1).getValues();
-  const yearCol  = sheet.getRange(firstRow, colYear + 1,  nRows, 1).getValues();
-  const mfgCol   = sheet.getRange(firstRow, colMfg + 1,   nRows, 1).getValues();
-  const modelCol = sheet.getRange(firstRow, colModel + 1, nRows, 1).getValues();
 
-  let touched = 0, yPromoted = 0, wPromoted = 0, yToP = 0, wToR = 0, catalogFilled = 0;
+  let touched = 0, yPromoted = 0, wPromoted = 0, yToP = 0, wToR = 0;
 
   for (const car of cars.rows) {
     const idx = car.rowNum - firstRow;   // index into the buffer arrays
     const k   = carObjKey_(car);
     const s   = stats.get(k);
-
-    // --- Backfill Year/MFG/Model from another row with the same Car Name,
-    //     whenever this row is missing any of them. Covers rows created by
-    //     hand with just a Car Name typed in, and rows auto-added before a
-    //     catalog match existed yet. Never overwrites a value that's already
-    //     there - only fills genuinely blank cells.
-    if (!car.year || !car.mfg || !car.model) {
-      const catalog = cars.byCarName.get(normalize_(car.carName));
-      if (catalog) {
-        if (!car.year  && catalog.year)  { yearCol[idx][0]  = catalog.year;  catalogFilled++; }
-        if (!car.mfg   && catalog.mfg)   { mfgCol[idx][0]   = catalog.mfg;   }
-        if (!car.model && catalog.model) { modelCol[idx][0] = catalog.model; }
-      }
-    }
 
     // --- Type cell: rewrite to canonical (Road/Dirt) value if it normalised
     //     to something different from the cell's current text.  Unknown
@@ -856,6 +711,8 @@ function applyUpdates_(ss, cars, stats, yWinners) {
       winR[idx][0]  = s.winRate;
       races[idx][0] = s.races;
       wins[idx][0]  = s.wins;
+      bestT[idx][0] = s.bestTimeSec != null ? formatTime_(s.bestTimeSec) : '';
+      lastR[idx][0] = s.lastRaced || '';
       touched++;
     } else {
       // No matching Results rows this run - zero Races AND Wins together so
@@ -864,14 +721,9 @@ function applyUpdates_(ss, cars, stats, yWinners) {
       winR[idx][0]  = '';
       races[idx][0] = 0;
       wins[idx][0]  = 0;
+      bestT[idx][0] = '';
+      lastR[idx][0] = '';
     }
-
-    // One line per row in the execution log - search this log (View >
-    // Executions in the Apps Script editor, open the latest run) for a Car
-    // Name to see exactly what this run computed and is about to write for
-    // it, independent of what ends up visible in the sheet afterward.
-    Logger.log(`row ${car.rowNum} idx=${idx} "${car.carName}" [${car.class}/${car.type}] ` +
-      `key=${k} matched=${!!s} -> races=${races[idx][0]} wins=${wins[idx][0]}`);
 
     // --- Fav transitions ---
     if (car.fav === 'M' || car.fav === 'N') continue;   // never modify
@@ -903,13 +755,12 @@ function applyUpdates_(ss, cars, stats, yWinners) {
        .setNumberFormat('0.0%');
   sheet.getRange(firstRow, colRaces + 1, nRows, 1).setValues(races);
   sheet.getRange(firstRow, colWins + 1,  nRows, 1).setValues(wins);
+  sheet.getRange(firstRow, colBestT + 1, nRows, 1).setValues(bestT);
+  sheet.getRange(firstRow, colLastR + 1, nRows, 1).setValues(lastR);
   sheet.getRange(firstRow, colFav + 1,   nRows, 1).setValues(favCol);
   sheet.getRange(firstRow, colType + 1,  nRows, 1).setValues(typeCol);
-  sheet.getRange(firstRow, colYear + 1,  nRows, 1).setValues(yearCol);
-  sheet.getRange(firstRow, colMfg + 1,   nRows, 1).setValues(mfgCol);
-  sheet.getRange(firstRow, colModel + 1, nRows, 1).setValues(modelCol);
 
-  return { touched, yPromoted, wPromoted, yToP, wToR, catalogFilled };
+  return { touched, yPromoted, wPromoted, yToP, wToR };
 }
 
 /**
@@ -948,14 +799,6 @@ function appendNewCars_(ss, cars, seeds) {
 /**
  * Wipes & rebuilds the "Best by Track+Class" tab — one row per (Track, Class)
  * combo, with the car holding the record at that track in that class.
- *
- * Races and Win Rate are deliberately NOT on this tab (removed 2026-08-23) -
- * those are per-car totals and belong exclusively on the Cars tab, which is
- * the only place they're computed and written. Keeping a second copy of the
- * same numbers here, under the same column name, was the source of real
- * confusion about which "Races" a given number was even referring to. This
- * tab's job is narrower: which car holds the record at each (Track, Class),
- * and what that time was.
  */
 function rebuildBestByTab_(ss, stats, yWinners, cars) {
   let sheet = ss.getSheetByName(CONFIG.BEST_BY_SHEET);
@@ -964,7 +807,8 @@ function rebuildBestByTab_(ss, stats, yWinners, cars) {
 
   const headers = ['Track', 'Class', 'Type', 'Car Name',
                    'Year', 'MFG', 'Model',
-                   'Best Time', 'Source', 'Last Raced', 'Updated'];
+                   'Best Time', 'Source', 'Races', 'Win Rate',
+                   'Last Raced', 'Updated'];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers])
        .setFontWeight('bold');
 
@@ -982,7 +826,8 @@ function rebuildBestByTab_(ss, stats, yWinners, cars) {
       track: rec.track, class: rec.class, type: s.car.type,
       carName: s.car.carName,
       year: s.car.year, mfg: s.car.mfg, model: s.car.model,
-      bestTimeSec: rec.time, source: rec.source, lastRaced: s.lastRaced || ''
+      bestTimeSec: rec.time, source: rec.source,
+      races: s.races, winRate: s.winRate, lastRaced: s.lastRaced || ''
     });
   }
   // Sort by Class, then Track, for predictable browsing.
@@ -994,72 +839,44 @@ function rebuildBestByTab_(ss, stats, yWinners, cars) {
   const data = rows.map(r => [
     r.track, r.class, r.type, r.carName,
     r.year, r.mfg, r.model,
-    formatTime_(r.bestTimeSec), r.source, r.lastRaced, now
+    formatTime_(r.bestTimeSec), r.source,
+    r.races, r.winRate, r.lastRaced, now
   ]);
 
   if (data.length) {
     sheet.getRange(2, 1, data.length, headers.length).setValues(data);
+    const wrCol = headers.indexOf('Win Rate') + 1;
+    sheet.getRange(2, wrCol, data.length, 1).setNumberFormat('0.0%');
   }
   sheet.autoResizeColumns(1, headers.length);
   sheet.setFrozenRows(1);
 }
 
 /**
- * Appends a one-line summary to the Analysis Log tab. Column order matches
- * LOG_HEADERS exactly, and every value is looked up from `summary` by that
- * same name at write time - so adding a new field to LOG_HEADERS is the only
- * step needed; there's no separate hardcoded array to keep in sync with it.
- * If the sheet already exists from before a header was added, the missing
- * header cell is appended to the end of the existing row first, so old sheets
- * self-heal to the current shape instead of silently drifting out of
- * alignment with what gets appended below them.
+ * Appends a one-line summary to the Analysis Log tab.
  */
-const LOG_HEADERS = [
-  ['Run Timestamp',      'timestamp'],
-  ['Races Read',         'racesRead'],
-  ['Cars Total',         'carsTotal'],
-  ['Cars Added',         'carsAdded'],
-  ['Cars Updated',       'carsUpdated'],
-  ['Y Promoted',         'yPromoted'],
-  ['W Promoted',         'wPromoted'],
-  ['Y→P',                'yToP'],
-  ['W→R',                'wToR'],
-  ['Unresolved',         'unresolved'],
-  ['Unresolved Samples', 'unresolvedSamples'],
-  ['Excluded (Notes)',   'excludedByNotes'],
-  ['Catalog Filled',     'catalogFilled']
-];
-
 function appendLog_(ss, summary) {
   let sheet = ss.getSheetByName(CONFIG.LOG_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(CONFIG.LOG_SHEET);
-    sheet.appendRow(LOG_HEADERS.map(h => h[0]));
-    sheet.getRange(1, 1, 1, LOG_HEADERS.length).setFontWeight('bold');
-  } else {
-    // Self-heal: add any header this sheet doesn't have yet, at the end,
-    // so an older sheet catches up instead of the data silently misaligning.
-    const existing = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-      .map(h => String(h).trim());
-    for (const [label] of LOG_HEADERS) {
-      if (!existing.includes(label)) {
-        sheet.getRange(1, sheet.getLastColumn() + 1).setValue(label).setFontWeight('bold');
-        existing.push(label);
-      }
-    }
+    sheet.appendRow([
+      'Run Timestamp', 'Races Read', 'Excluded (Notes)', 'Cars Total',
+      'Cars Added', 'Cars Updated',
+      'Y Promoted', 'W Promoted', 'Y→P', 'W→R',
+      'Unresolved', 'Unresolved Samples'
+    ]);
+    sheet.getRange(1, 1, 1, 12).setFontWeight('bold');
   }
-
-  // Build the row by reading the CURRENT header order off the sheet (not
-  // LOG_HEADERS' order), so a sheet whose columns ended up in a different
-  // order for any reason still gets each value under the right header.
-  const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-    .map(h => String(h).trim());
-  const byLabel = new Map(LOG_HEADERS);   // label -> summary key
-  const row = headerRow.map(label => {
-    const key = byLabel.get(label);
-    return key ? (summary[key] !== undefined ? summary[key] : '') : '';
-  });
-  sheet.appendRow(row);
+  // Note: if this sheet already existed from before "Excluded (Notes)" was
+  // added, its header row won't retroactively gain the new column label -
+  // only new sheets get the full header. The value still gets appended in
+  // this position on every run either way.
+  sheet.appendRow([
+    summary.timestamp, summary.racesRead, summary.excludedByNotes, summary.carsTotal,
+    summary.carsAdded, summary.carsUpdated,
+    summary.yPromoted, summary.wPromoted, summary.yToP, summary.wToR,
+    summary.unresolved, summary.unresolvedSamples
+  ]);
 }
 
 // ============================== HELPERS ====================================
@@ -1083,24 +900,27 @@ function columnLetter_(col) {
 }
 
 /**
- * Finds a column by its header text, not by position - so the Cars tab can
- * have columns in any order, add new ones, or differ between spreadsheets,
- * and this script still finds the right one. The one thing that does have to
- * match is the header text itself, so this re-checks that the live cell
- * still reads exactly what was expected right before writing to it, and
- * names the exact mismatch in the error if not.
+ * Looks up a column by header name and verifies the sheet's actual header
+ * cell still says exactly that - not just "some column claimed this name
+ * when the header row was first read." Throws loudly and specifically if the
+ * name is missing or if the live cell disagrees, instead of silently writing
+ * to whatever index the caller passes in. This exists because a header
+ * lookup mismatch here previously caused Races/Wins to be written to the
+ * wrong place (or not found at all) with zero visible error - the run
+ * finished, reported success, and nobody could tell without manually
+ * comparing cells.
  */
 function resolveCol_(sheet, hmap, name) {
   const idx = hmap[name];
   if (idx === undefined) {
-    throw new Error(`Cars tab has no column named "${name}". ` +
-      `Add it, or fix the spelling, and run again.`);
+    throw new Error(`Cars tab is missing the "${name}" column (expected exact, ` +
+      `case-sensitive header text). Add it or fix the spelling and run again.`);
   }
   const col = idx + 1;   // 1-based sheet column
   const actual = String(sheet.getRange(1, col).getValue()).trim();
   if (actual !== name) {
-    throw new Error(`Expected "${name}" at column ` +
-      `${columnLetter_(col)} but found "${actual}" instead. The Cars tab layout may ` +
+    throw new Error(`Column mismatch: expected "${name}" at column ` +
+      `${columnLetter_(col)} but found "${actual}". The Cars tab layout may ` +
       `have changed (columns inserted/reordered/renamed) since this script ` +
       `last ran - fix the header or re-check CONFIG.CARS_HEADERS/COMPUTED_COLS.`);
   }
@@ -1121,33 +941,6 @@ function ensureComputedColumns_(sheet, headers, hmap) {
       headers.push(name);
     }
   }
-}
-
-/**
- * Makes sure "Win Rate" is at a fixed column - P (16) - instead of wherever
- * auto-append happened to leave it historically. Win Rate is fully
- * recomputed from scratch every run (never user-entered), so relocating it
- * is lossless: if it currently exists somewhere else, that column is deleted
- * outright and a fresh one is inserted at P; applyUpdates_ repopulates every
- * row's value in the same run regardless of where the column sits. A no-op
- * if it's already at P.
- */
-function ensureWinRateAtColumnP_(sheet) {
-  const TARGET_COL = 16;   // column P
-  const label = 'Win Rate';
-
-  let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-    .map(h => String(h).trim());
-  const currentCol = headers.indexOf(label) + 1;   // 1-based; 0 if not found
-
-  if (currentCol === TARGET_COL) return;   // already in the right place
-
-  if (currentCol > 0) {
-    sheet.deleteColumn(currentCol);
-  }
-
-  sheet.insertColumnBefore(TARGET_COL);
-  sheet.getRange(1, TARGET_COL).setValue(label).setFontWeight('bold');
 }
 
 /**
@@ -1302,3 +1095,4 @@ function pushMulti_(map, key, val) {
   const list = map.get(key);
   if (list) list.push(val); else map.set(key, [val]);
 }
+```

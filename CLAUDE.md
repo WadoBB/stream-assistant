@@ -39,6 +39,7 @@ The system intentionally runs across two computers to minimize load on the gamin
 - Runs `results_extractor.py` — sends screenshot to Claude API, extracts data
 - Runs `sheets_writer.py` — writes to Google Sheets
 - Hosts the shared network folder that the gaming PC writes screenshots to
+- Serves the stream overlay (`/overlay`, `/overlay/state`) via `controller.py`
 
 **Important:** All code for both sides of the system lives on BOTH computers.
 This is intentional — it simplifies GitHub management and means either computer
@@ -55,9 +56,35 @@ can be fully restored from GitHub if lost.
 |------|----------|------------------------------------------|
 | 9999 | UDP      | Forza telemetry → AI computer            |
 | 9998 | UDP      | AI computer → capture agent (RACE_END trigger) |
-| 5000 | TCP      | Flask controller (Stream Deck toggle)    |
+| 5000 | TCP      | Flask controller (Stream Deck toggle, stream overlay) |
 
 If IPs change, update `ai-computer/config.py` and both bat files in `gaming-pc/`.
+
+## Stream Overlay — New Record Alert
+Flashes a "NEW RECORD!" alert in OBS when a race beats the cached Best by
+Track+Class time for that (Track, Class). Added 2026-09-11; not yet tested live.
+
+- `sheets_writer.py`'s `check_for_new_record()` runs first in `write_race()`
+  (before any Sheets writes), so the alert doesn't wait on them. It lazily
+  loads a `{(track, class): seconds}` cache from the **Best by Track+Class**
+  tab (read-only — this script never writes that tab) and compares each
+  race's time against it, using the same lap-preferred-over-race-time logic
+  as `aggregatePerCar_` in the Apps Script. A new record updates the cache in
+  memory immediately and writes `ai-computer/overlay/state.json`
+  (temp-then-rename, same pattern as the capture agent's screenshot writes).
+  Non-competitive races (Spec Race/Touge/Time Attack) are skipped, same as
+  everywhere else the Y-flag/record system applies.
+- **Why this can't be faster via telemetry alone:** the FH5/FH6 UDP packet has
+  no track field, so a track-specific record can only be checked after the
+  scoreboard OCR step gives us the track name — same timing as the rest of
+  the pipeline. A telemetry-only "instant teaser" tier was considered and
+  explicitly declined in favor of one simple, always-accurate alert.
+- `controller.py` (always-running, not the toggled pipeline) serves the page
+  at `/overlay` and the current event as JSON at `/overlay/state`. Point an
+  OBS Browser Source at `http://192.168.137.230:5000/overlay`.
+- `ai-computer/overlay/index.html` polls `/overlay/state` every 1.5s, flashes
+  a 7-second animation on a new `race_id`, and ignores events older than 60
+  seconds so a Browser Source reload mid-stream doesn't replay a stale record.
 
 ## Network Share (Screenshots)
 The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.
@@ -294,16 +321,83 @@ Only opponents who finished *ahead* of the user are logged. Best Lap is blank fo
 point-to-point and trail races (no laps to track). Spec Race rows have Notes = "Spec Race".
 
 **Cars tab** (inventory, managed manually + by Apps Script):
-FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins
+FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins | Win Rate
 
 **Races and Wins** (columns N and O) are updated automatically after every race by
 `sheets_writer.py`. Matching uses the composite key **(Car Name, Class, Type)** —
 the same car tuned to different classes or surface types (Road vs Dirt) is tracked separately.
 
+**Win Rate is column P, always** — `forza_car_updater.gs`'s `ensureWinRateAtColumnP_`
+pins it there rather than letting it land wherever auto-append last put it. It's
+fully recomputed from scratch every run (`wins / races`), so relocating it is
+lossless: if it's ever found somewhere else (e.g. an older sheet), that column is
+deleted and a fresh one inserted at P, then repopulated in the same run.
+
 **Google Apps Script** (`Forza Car Updater`) runs separately (manually or on a
-daily schedule) and manages computed columns — Win Rate, Best Time, Last Raced —
-plus the Fav flag logic and the **Best by Track+Class** tab. Run from the
+daily schedule) and manages the Cars tab's Win Rate column plus the Fav flag
+logic and the **Best by Track+Class** tab. Run from the
 **Forza → Update Cars** menu in the spreadsheet. It skips Spec Race rows.
+
+**Best Time and Last Raced are NOT written to the Cars tab** (removed
+2026-08-23, `applyUpdates_`/`COMPUTED_COLS`) — those are per-(Track,Class)
+values and exist only on the **Best by Track+Class** tab. They used to be
+auto-appended to the Cars tab too, and would silently come back if manually
+deleted there since the script treated them as columns it owns; removing them
+from `COMPUTED_COLS` stops that.
+
+**Best by Track+Class does NOT have Races or Win Rate columns** (removed
+2026-08-23) — it only ever shows which car holds the record at each
+(Track, Class) and that car's best time. Races/Win Rate are per-car totals
+and exist in exactly one place: the Cars tab. The two tabs previously had a
+column both called "Races" with different meanings (one per-car total, one
+tied to a specific track/class record), which was a real source of confusion
+about which number was even being looked at.
+
+**Races and Wins are written by both `sheets_writer.py`'s `update_car_stats()`
+(real-time, after every race) and the Apps Script (nightly batch run) — and this
+is intentional, not a bug to "fix" by picking one.** Python can only ever update
+a Cars row that already exists, so a car raced for the first time has nowhere
+to write to until a Cars row for it exists. The Apps Script is the only piece
+that can auto-add that row (`appendNewCars_`, keyed on the abbreviated Car Name
+exactly as it appears on the scoreboard/Results tab) — which is why the normal
+workflow is race all night, then run **Forza → Update Cars** once at the end so
+new cars get both a Cars row and a populated Races/Wins in the same pass.
+
+The Apps Script used to write Races but never Wins. Since it does a full
+rebuild every run and zeroes any Cars row it fails to match that run (correct
+behavior for an authoritative recompute — e.g. after a Results row is deleted),
+zeroing only one of the two columns let them drift out of sync with each other
+over time. Fixed 2026-08-21: `forza_car_updater.gs` now writes Races and Wins
+together, always zeroed or populated as a pair, so they can't disagree.
+
+**If a car's Races/Wins are blank after running Update Cars, check the Notes
+column on its Results rows first** — `Spec Race`/`Touge`/`Time Attack` rows are
+intentionally excluded from the tally (see Filtering Rules below) in both
+`update_car_stats()` and the Apps Script's `readResults_()`. That's usually the
+answer before suspecting a matching-key bug. If it's not that, run
+**Forza → Diagnose Matching** (writes a **Match Debug** tab) to see exactly
+which (Car Name, Class, Type) key a Results row produced and whether/why it
+missed the Cars tab row.
+
+**Every Cars tab column the Apps Script touches is found by header text, never
+by position.** `resolveCol_()` in `forza_car_updater.gs` looks a column up by
+name and re-verifies the live header cell still says exactly that right
+before writing to it, throwing a specific error naming the mismatch if not.
+This means the Cars tab's column *order* can differ from what's documented
+above, gain new columns, or differ between the FH5 and FH6 spreadsheets, and
+the Apps Script still finds the right one — only the header *text* has to
+match. `sheets_writer.py`, by contrast, still addresses Races/Wins by
+hardcoded column letters (`N`/`O`) — if the Cars tab layout ever genuinely
+diverges from A–O as documented above, Python's writes would silently land in
+the wrong place with no error, unlike the Apps Script's side.
+
+**On a Car Name match, the Apps Script auto-fills Year/MFG/Model from any
+other row with that same Car Name** — both when auto-adding a brand-new
+(Car Name, Class, Type) row (`appendNewCars_`) and, as of 2026-08-23, as a
+backfill pass in `applyUpdates_` for any *existing* row still missing one of
+those three fields. It never overwrites a value that's already present. The
+only case that still needs manual entry is a genuinely new Car Name with no
+existing catalog row to copy from.
 
 ## FH6 Telemetry Probe Logging
 Packet samples are saved to `ai-computer\logs\packet_samples\` — one pair of files
@@ -348,6 +442,6 @@ differences on the first FH6 play session.
 - **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
 - **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
 - **Car-change detection** — `car_ordinal` changes in telemetry when the user switches cars in free roam; would trigger stream overlay events without needing a screen scraper
-- **Stream overlays** — OBS browser-source overlays fed by a local JSON file: car stats on car change, race summary at race end, personal record alerts
+- **Stream overlays — car stats on car change, race summary at race end** still not built. The personal-record-alert overlay described below is built (2026-09-11) but not yet tested live.
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately

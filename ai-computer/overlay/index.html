@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stream Assistant Overlay</title>
+<style>
+  /* Transparent so OBS Browser Source shows only the alert box, not a background. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  #record-alert {
+    position: fixed;
+    left: 50%;
+    bottom: 8%;
+    transform: translate(-50%, 40px);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+    background: linear-gradient(135deg, #1b1f3a, #3a1b5a);
+    border: 2px solid #ffd447;
+    border-radius: 14px;
+    box-shadow: 0 0 30px rgba(255, 212, 71, 0.6), 0 8px 24px rgba(0,0,0,0.5);
+    padding: 18px 36px;
+    text-align: center;
+    color: #fff;
+    min-width: 420px;
+  }
+
+  #record-alert.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  #record-alert .headline {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffd447;
+    text-shadow: 0 0 12px rgba(255, 212, 71, 0.8);
+    margin-bottom: 4px;
+  }
+
+  #record-alert .detail-line {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  #record-alert .sub-line {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div id="record-alert">
+  <div class="headline">🏆 NEW RECORD!</div>
+  <div class="detail-line" id="ra-main"></div>
+  <div class="sub-line" id="ra-sub"></div>
+</div>
+
+<script>
+  // Polls the local controller for the latest record event. Only flashes an
+  // event once per page load per race_id, and only if it's recent - guards
+  // against replaying an old record if the Browser Source reloads long after
+  // the event happened (e.g. OBS restart mid-stream).
+  const POLL_MS = 1500;
+  const MAX_AGE_MS = 60 * 1000;
+  const SHOW_MS = 7000;
+
+  let lastRaceId = null;
+  let hideTimer = null;
+
+  function showAlert(event) {
+    document.getElementById('ra-main').textContent =
+      `${event.car} — ${event.track} (${event.class})`;
+    document.getElementById('ra-sub').textContent = event.previous_time
+      ? `${event.time}  (previous best: ${event.previous_time})`
+      : `${event.time}  (first time on record)`;
+
+    const el = document.getElementById('record-alert');
+    el.classList.add('show');
+
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
+  }
+
+  async function poll() {
+    try {
+      const resp = await fetch('/overlay/state', { cache: 'no-store' });
+      const event = await resp.json();
+
+      if (event && event.race_id && event.race_id !== lastRaceId) {
+        const ageMs = Date.now() - new Date(event.timestamp).getTime();
+        lastRaceId = event.race_id;   // mark seen regardless of age
+        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+          showAlert(event);
+        }
+      }
+    } catch (e) {
+      // Controller unreachable or pipeline not running yet - just retry next poll.
+    }
+    setTimeout(poll, POLL_MS);
+  }
+
+  poll();
+</script>
+
+</body>
+</html>

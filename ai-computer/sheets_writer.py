@@ -5,14 +5,19 @@
 # finished ahead to the Opponents tab in Google Sheets.
 # =============================================================
 
+import os
 import re
+import json
 import logging
+from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from collections import defaultdict
-from config import SHEETS_CREDENTIALS, FH5_SPREADSHEET_ID, FH6_SPREADSHEET_ID, RESULTS_TAB, OPPONENTS_TAB, CARS_TAB
-from results_extractor import NON_COMPETITIVE_NOTES
+from config import (SHEETS_CREDENTIALS, FH5_SPREADSHEET_ID, FH6_SPREADSHEET_ID,
+                     RESULTS_TAB, OPPONENTS_TAB, CARS_TAB, BEST_BY_TAB,
+                     OVERLAY_FOLDER, OVERLAY_STATE_FILE)
+from results_extractor import NON_COMPETITIVE_NOTES, time_to_seconds
 
 
 def _normalize_str(s):
@@ -67,6 +72,39 @@ def _car_key(car_name, cls, car_type):
             _normalize_str(cls),
             _normalize_str(_normalize_type(car_type)))
 
+
+def _parse_sheet_time(s):
+    """
+    Parses a time string in the Apps Script's formatTime_() output format -
+    "m:ss.fff" or "h:mm:ss.fff" (no leading zero on minutes unless hours are
+    present) - as read back from the Best by Track+Class tab. Different from
+    results_extractor.time_to_seconds(), which parses the "MM:SS.mmm" format
+    that Claude/telemetry produce. Returns None for blank/unparseable input.
+    """
+    s = str(s or '').strip()
+    if not s:
+        return None
+    parts = s.split(':')
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + float(parts[1])
+        return float(parts[0])
+    except (ValueError, IndexError):
+        return None
+
+
+def _format_seconds(secs):
+    """Formats seconds as 'm:ss.fff' for display, matching the Apps Script's
+    formatTime_() so a previous-record time reads the same way on both sides."""
+    if secs is None:
+        return None
+    total = max(0.0, secs)
+    minutes = int(total // 60)
+    seconds = total - minutes * 60
+    return f"{minutes}:{seconds:06.3f}"
+
 # Column order must match your sheet headers exactly
 RESULTS_COLUMNS = [
     "date", "race_id", "position", "car", "class",
@@ -90,6 +128,8 @@ class SheetsWriter:
     def __init__(self, game_version="FH5"):
         self.spreadsheet_id = FH5_SPREADSHEET_ID if game_version == "FH5" else FH6_SPREADSHEET_ID
         self.service        = self._build_service()
+        self._best_times        = {}      # (track, class) -> seconds, lazy-loaded
+        self._best_times_loaded = False
 
     def _build_service(self):
         """Authenticate and build the Google Sheets API service."""
@@ -111,6 +151,16 @@ class SheetsWriter:
         Appends one row to Results and one row per opponent to Opponents,
         then refreshes Races/Wins counts in the Cars tab.
         """
+        # Checked first and independently of the Sheets writes below - it only
+        # needs race_result (already fully extracted) plus a local cache, so
+        # the on-screen alert doesn't wait on Results/Opponents/Cars writes.
+        # Wrapped defensively: a bug in the overlay path must never prevent
+        # the actual Results row from being written.
+        try:
+            self.check_for_new_record(race_result)
+        except Exception as e:
+            log.error(f"Record-check/overlay update failed (non-fatal): {e}")
+
         self._append_result(race_result)
 
         if opponents and race_result.get("notes") != "Spec Race":
@@ -120,6 +170,117 @@ class SheetsWriter:
             log.info("No opponents ahead of you this race - Opponents tab unchanged")
 
         self.update_car_stats()
+
+    def check_for_new_record(self, race_result):
+        """
+        Compares this race's time against the cached Best by Track+Class
+        record for (Track, Class) and writes overlay_state.json if it beats
+        it, so a local OBS Browser Source overlay (see controller.py's
+        /overlay routes) can flash a "new record" alert.
+
+        Non-competitive races (Spec Race/Touge/Time Attack) are skipped -
+        they're excluded from the Y-flag/record system entirely, same as the
+        Races/Wins tally (see NON_COMPETITIVE_NOTES).
+
+        The cache is loaded once from the Best by Track+Class tab (read-only -
+        this script never writes that tab, the Apps Script owns it) and then
+        updated in memory as records fall during the session, so repeated
+        checks don't each cost a Sheets API round-trip.
+        """
+        if race_result.get("notes") in NON_COMPETITIVE_NOTES:
+            return
+
+        if not self._best_times_loaded:
+            self._load_best_times_cache()
+
+        best_lap_sec  = time_to_seconds(race_result.get("best_lap"))
+        race_time_sec = time_to_seconds(race_result.get("race_time"))
+        time_sec = best_lap_sec if best_lap_sec is not None else race_time_sec
+        if time_sec is None:
+            return
+
+        track = race_result.get("track", "")
+        cls   = race_result.get("class", "")
+        if not track or not cls:
+            return
+
+        key = (_normalize_str(track), _normalize_str(cls))
+        prior = self._best_times.get(key)
+        if prior is not None and time_sec >= prior:
+            return   # not a new record
+
+        self._best_times[key] = time_sec   # update cache immediately this session
+        self._write_overlay_event(race_result, time_sec, prior)
+        log.info(
+            f"NEW RECORD: {race_result.get('car')} @ {track} ({cls}) - "
+            f"{race_result.get('best_lap') or race_result.get('race_time')} "
+            f"(previous: {_format_seconds(prior) if prior is not None else 'none'})"
+        )
+
+    def _load_best_times_cache(self):
+        """Reads the Best by Track+Class tab into {(track, class): seconds}."""
+        try:
+            resp = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"{BEST_BY_TAB}!A:H"
+            ).execute()
+        except HttpError as e:
+            log.error(f"Failed to read {BEST_BY_TAB} tab for record tracking: {e}")
+            self._best_times_loaded = True   # don't retry every single race
+            return
+
+        rows = resp.get("values", [])
+        if len(rows) < 2:
+            self._best_times_loaded = True
+            return
+
+        headers = [h.strip().lower() for h in rows[0]]
+        try:
+            track_col = headers.index("track")
+            class_col = headers.index("class")
+            time_col  = headers.index("best time")
+        except ValueError as e:
+            log.error(f"{BEST_BY_TAB} tab missing expected column: {e}")
+            self._best_times_loaded = True
+            return
+
+        need_cols = max(track_col, class_col, time_col)
+        cache = {}
+        for row in rows[1:]:
+            if len(row) <= need_cols:
+                continue
+            track = row[track_col].strip()
+            cls   = row[class_col].strip()
+            secs  = _parse_sheet_time(row[time_col])
+            if not track or secs is None:
+                continue
+            cache[(_normalize_str(track), _normalize_str(cls))] = secs
+
+        self._best_times = cache
+        self._best_times_loaded = True
+        log.info(f"Loaded {len(cache)} track/class best times for record tracking")
+
+    def _write_overlay_event(self, race_result, time_sec, prior_sec):
+        """Writes overlay_state.json (temp-then-rename, same pattern as the
+        capture agent's screenshot writes) so the overlay page never reads a
+        half-written file."""
+        event = {
+            "race_id":       race_result.get("race_id"),
+            "car":           race_result.get("car"),
+            "track":         race_result.get("track"),
+            "class":         race_result.get("class"),
+            "time":          race_result.get("best_lap") or race_result.get("race_time"),
+            "previous_time": _format_seconds(prior_sec),
+            "timestamp":     datetime.now().isoformat()
+        }
+        tmp_path = OVERLAY_STATE_FILE + ".tmp"
+        try:
+            os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+            with open(tmp_path, "w") as f:
+                json.dump(event, f)
+            os.replace(tmp_path, OVERLAY_STATE_FILE)
+        except Exception as e:
+            log.error(f"Failed to write overlay state: {e}")
 
     def update_car_stats(self):
         """

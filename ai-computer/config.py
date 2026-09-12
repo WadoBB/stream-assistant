@@ -23,6 +23,15 @@ PROCESSED_FOLDER        = r"C:\StreamAssistant\ai-computer\captures\processed"
 LOGS_FOLDER             = r"C:\StreamAssistant\ai-computer\logs"
 CREDENTIALS_FOLDER      = r"C:\StreamAssistant\ai-computer\credentials"
 
+# --- Stream Overlay (personal record alert) ---
+# controller.py serves OVERLAY_HTML at /overlay and OVERLAY_STATE_FILE's
+# contents at /overlay/state; sheets_writer.py writes OVERLAY_STATE_FILE
+# whenever a race beats the cached Best by Track+Class record. Point an OBS
+# Browser Source at http://<AI_COMPUTER_IP>:<CONTROLLER_PORT>/overlay.
+OVERLAY_FOLDER          = r"C:\StreamAssistant\ai-computer\overlay"
+OVERLAY_HTML            = r"C:\StreamAssistant\ai-computer\overlay\index.html"
+OVERLAY_STATE_FILE      = r"C:\StreamAssistant\ai-computer\overlay\state.json"
+
 # --- Anthropic API ---
 # Key is loaded from credentials\.env - never hardcode here
 ANTHROPIC_MODEL         = "claude-sonnet-4-6"
@@ -34,6 +43,7 @@ FH6_SPREADSHEET_ID      = "1Rd1V7z86sJFMumtativB6Tv6kZfBcwbD0JyWFhiy7gY"   # For
 RESULTS_TAB             = "Results"
 OPPONENTS_TAB           = "Opponents"
 CARS_TAB                = "Cars"
+BEST_BY_TAB             = "Best by Track+Class"
 
 # --- Ollama (future use) ---
 OLLAMA_MODEL            = "llama3.1:latest"

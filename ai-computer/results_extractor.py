@@ -127,7 +127,13 @@ def extract_results(client, image_path, race_id, telemetry_summary, game_version
     """
     log.info(f"Sending {os.path.basename(image_path)} to Claude for extraction...")
 
-    image_data = image_to_base64(image_path)
+    try:
+        image_data = image_to_base64(image_path)
+    except Exception as e:
+        # Must not raise here - this runs inside the background polling loop,
+        # and an uncaught exception kills that thread silently (see start()).
+        log.error(f"Failed to read screenshot {image_path}: {e}")
+        return None, None
 
     track_name_hint = (
         "exact text from black box at top"      if game_version == "FH6"
@@ -316,14 +322,24 @@ class ResultsExtractor:
         log.info(f"Telemetry stored for race {race_id}")
 
     def start(self):
-        """Start monitoring captures folder. Runs until interrupted."""
+        """
+        Start monitoring captures folder. Runs until interrupted.
+        This loop runs in a daemon thread (see main.py) - if it dies from an
+        uncaught exception, the rest of the pipeline keeps running and looks
+        fine, but screenshots silently stop being processed until the whole
+        process is restarted. Catch broadly and keep polling so a single bad
+        file or transient error can't take the thread down.
+        """
         log.info(f"Results Extractor watching: {CAPTURES_FOLDER}")
-        try:
-            while True:
+        while True:
+            try:
                 self._check_for_new_captures()
-                time.sleep(POLL_INTERVAL)
-        except KeyboardInterrupt:
-            log.info("Results Extractor stopped.")
+            except KeyboardInterrupt:
+                log.info("Results Extractor stopped.")
+                return
+            except Exception as e:
+                log.error(f"Unexpected error in capture loop - continuing: {e}", exc_info=True)
+            time.sleep(POLL_INTERVAL)
 
     def _check_for_new_captures(self):
         """Look for new PNG files in captures folder and process them."""
