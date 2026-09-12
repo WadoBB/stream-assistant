@@ -90,8 +90,9 @@ more reliable than remote-access setup on this two-machine, two-OS-account
 Windows LAN, and each endpoint added this way stays useful for next time.
 
 ## Stream Overlay — New Record Alert
-Flashes a "NEW RECORD!" alert in OBS when a race beats the cached Best by
-Track+Class time for that (Track, Class). Added 2026-09-11; not yet tested live.
+Flashes a "NEW RECORD!" alert (plus a cheer sound) in OBS when a race beats
+the cached Best by Track+Class time for that (Track, Class). Added
+2026-09-11, confirmed working against real races 2026-09-12.
 
 - `sheets_writer.py`'s `check_for_new_record()` runs first in `write_race()`
   (before any Sheets writes), so the alert doesn't wait on them. It lazily
@@ -477,6 +478,6 @@ differences on the first FH6 play session.
 - **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
 - **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
 - **Car-change detection** — `car_ordinal` changes in telemetry when the user switches cars in free roam; would trigger stream overlay events without needing a screen scraper
-- **Stream overlays — car stats on car change, race summary at race end** still not built. The personal-record-alert overlay described below is built (2026-09-11) but not yet tested live.
+- **Stream overlays — car stats on car change, race summary at race end** still not built. The personal-record-alert overlay described below is built and confirmed working live (2026-09-11/12).
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately

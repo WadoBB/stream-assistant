@@ -6,10 +6,11 @@ Items are loosely ordered by priority. Update this file as things are resolved o
 
 ## Active / In Progress
 
-### New-Record Stream Overlay — built 2026-09-11, needs live testing
-Flashes a "NEW RECORD!" alert on stream when a race beats the cached Best by
-Track+Class time for that (Track, Class). Not yet tested against a live race —
-this is a first pass that needs a real session to confirm end-to-end.
+### New-Record Stream Overlay — built and verified live 2026-09-11/12
+Flashes a "NEW RECORD!" alert (with a cheer sound) on stream when a race
+beats the cached Best by Track+Class time for that (Track, Class). Confirmed
+working end-to-end against real races, including the flag/graphic/sound all
+firing correctly together.
 
 **How it works:** `sheets_writer.py`'s `check_for_new_record()` runs first
 thing in `write_race()` (before the Results/Opponents/Cars writes, so the
@@ -58,11 +59,17 @@ If a Browser Source ever silently shows nothing again despite the server
 being verifiably fine, don't waste time on network/URL troubleshooting -
 just delete and re-add the source.
 
-**Still needed — an actual live race:** (1) does the Best by Track+Class
-cache load correctly from the real sheet on startup, (2) does a genuinely
-new (Track, Class) combo read sensibly as "first time on record", (3) does
-the timing feel right relative to the few-second scoreboard-OCR delay when
-triggered by `sheets_writer.py` for real instead of `/overlay/test`.
+**2026-09-12 — confirmed against real races.** First test race produced no
+alert — the (Track, Class) had only ever been raced in an `M`-flagged car, so
+Best by Track+Class had no row for it, exactly the edge case predicted above
+(read as "already excluded," not "first time on record," because the cache
+had no way to distinguish the two). Removing the `M` flag and re-racing fired
+the alert correctly with both the visual and the cheer sound. Cache-load
+timing, the "first time on record" wording, and overall timing relative to
+the scoreboard-OCR delay all confirmed working as designed. No further
+action needed unless the `M`-flag edge case above becomes a real annoyance
+in practice — it hasn't been asked for as a fix, just noted as expected
+behavior.
 
 ### Results Extractor Background Thread — Silent Death
 **Defect confirmed and hardened 2026-08-21; exact trigger for the 2026-08-20
@@ -126,6 +133,71 @@ Be careful — a previous attempt to tighten banner detection broke normal captu
 ---
 
 ## Planned
+
+### Car Suggester — scoped 2026-09-12, needs a dedicated session
+Suggests which car(s) to pick, before you commit, for whatever track/class
+is coming up next — a companion to the record-alert overlay but for the
+start of a race instead of the end. Not started; this is a scoping note to
+make the eventual build session fast, not a build in progress.
+
+**The core problem, worked out in a brainstorm 2026-09-12:** unlike the
+record alert (fine to fire a few seconds after the race ends), a suggestion
+only has value if it lands *before* car select. Telemetry can't help here at
+all — Forza's UDP stream only starts once `is_race_on = 1`, which is already
+past the point of no return. So this needs the same category of work as the
+original scoreboard reader: detecting and OCR'ing a *different* screen (the
+race notification/lobby/car-select screen) to pull the track name and class
+restriction, using a new banner/color signature the way `capture_agent.py`
+does for the scoreboard today (see FH5/FH6 Scoreboard Detection in
+CLAUDE.md for how much tuning that took the first time - pixel analysis,
+region/color thresholds, false-positive handling against pause menus, etc.).
+Expect this half of the work to be the hard part.
+
+**The easy half, once track/class is known:** looking up "top car(s) for
+this (Track, Class)" is mostly a Sheets read - the Best by Track+Class tab
+already tracks exactly this (the current record holder per Track+Class is
+arguably already *the* suggestion), and/or the Cars tab's Win Rate/Races
+columns can rank alternatives. No new aggregation logic needed, just a
+query against data that already exists.
+
+**Considered and set aside during the brainstorm:** triggering off
+`car_ordinal` changes in telemetry (already on CLAUDE.md's "not yet built"
+list) to react to a car switch - simpler technically (pure telemetry, no new
+screen detection) but reactive ("here's how this car has done") rather than
+predictive ("pick this car"). Worth remembering as a fallback if the
+lobby-screen detection proves too unreliable, but it's a different feature,
+not a substitute.
+
+**Next step (not code):** watch the actual race notification/car-select
+screen closely during normal play - what it looks like, when it appears,
+how long it's on screen, what colors/text are present, whether pause menus
+or other screens could be confused for it (the scoreboard detector already
+has a known false-positive mode here, see "Known Issue — False Capture on
+Quit Race" in CLAUDE.md - worth having that in mind while observing). That
+observation is the actual prerequisite for scoping the detection work; there's
+nothing to build correctly without it.
+
+### M (Meta) Flag — Best by Track+Class Exclusion — considered, deferred 2026-09-12
+`identifyYWinners_` in `forza_car_updater.gs` excludes `M`-flagged cars
+entirely from Y-ranking (`if (s.car.fav === 'M') continue;`), which means an
+M car's time can never appear on Best by Track+Class even if it's the
+objectively fastest. Floated changing this so Best by Track+Class reflects
+truly fastest times regardless of Meta status, while still keeping M cars
+out of the Y/W Fav-flag contest itself (a separate, already-correct
+exclusion on the `applyUpdates_` side).
+
+**Decided against for now:** an always-dominant Meta car would perpetually
+occupy every (Track, Class) record slot, masking whichever non-Meta ("legit
+build") car is actually the best performer among the cars the user
+considers fair game — which defeats the point of the leaderboard, since
+racing Meta is a self-imposed no-go. Revisit only if the motivation changes.
+
+**Confirmed still correctly protected, not in question:** the M flag itself
+is never altered by the script (`applyUpdates_` line ~877 skips the entire
+Fav-recompute block for `fav === 'M' || fav === 'N'`) — the duplicate-column
+incident that made it look like M was being touched was actually a stale
+`hmap` lookup resolving to the wrong physical column entirely (see "Win and
+Race Counts" below), not the Fav logic misbehaving.
 
 ### Win and Race Counts — Verify Correctness
 **Partial fix 2026-08-21, still under investigation.** Both `sheets_writer.py`'s
