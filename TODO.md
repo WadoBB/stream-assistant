@@ -39,11 +39,30 @@ no faster telemetry-only path for a *track*-specific record. A two-tier
 "instant telemetry teaser + confirmed alert" design was considered and
 explicitly declined in favor of one simple, always-accurate alert.
 
-**Next step:** race live and confirm: (1) the overlay actually flashes in OBS
-at the right time, (2) the Best by Track+Class cache loads correctly on
-startup, (3) the "first time on record" case reads sensibly for a track/class
-combo that's never been raced before, (4) timing feels right relative to the
-scoreboard screenshot delay.
+**2026-09-11 — end-to-end plumbing confirmed working**, via the new
+`GET /overlay/test` endpoint on `controller.py` (see "Cross-Machine
+Development" in CLAUDE.md) triggered remotely: state.json write, `/overlay`
+page polling, and the flash/fade animation all confirmed live in OBS at the
+correct position, layered correctly over the game capture. This only proves
+the display path, not the actual record-detection logic against real data.
+
+**OBS gotcha hit along the way, worth remembering:** the first Browser
+Source added never showed the alert (blank in both scene preview and
+Interact view) despite the exact same URL working fine in a plain desktop
+browser on the same machine, and despite `/overlay`/`/overlay/state`
+confirmed correct server-side. This OBS/Chromium-Embedded-Framework
+install's Browser Source had no "Refresh Cache of Current Page" option to
+force a reload. Fix was removing the source entirely and re-adding it fresh
+(new name, same URL/settings) — that one loaded correctly on the first try.
+If a Browser Source ever silently shows nothing again despite the server
+being verifiably fine, don't waste time on network/URL troubleshooting -
+just delete and re-add the source.
+
+**Still needed — an actual live race:** (1) does the Best by Track+Class
+cache load correctly from the real sheet on startup, (2) does a genuinely
+new (Track, Class) combo read sensibly as "first time on record", (3) does
+the timing feel right relative to the few-second scoreboard-OCR delay when
+triggered by `sheets_writer.py` for real instead of `/overlay/test`.
 
 ### Results Extractor Background Thread — Silent Death
 **Defect confirmed and hardened 2026-08-21; exact trigger for the 2026-08-20

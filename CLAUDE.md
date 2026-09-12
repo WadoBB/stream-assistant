@@ -114,6 +114,12 @@ Track+Class time for that (Track, Class). Added 2026-09-11; not yet tested live.
 - `ai-computer/overlay/index.html` polls `/overlay/state` every 1.5s, flashes
   a 7-second animation on a new `race_id`, and ignores events older than 60
   seconds so a Browser Source reload mid-stream doesn't replay a stale record.
+- Plays `ai-computer/overlay/cheer.mp3` (served at `/overlay/cheer.mp3`) the
+  moment the alert flashes in. OBS Browser Sources generally allow audio
+  autoplay without a prior user gesture (this is how every existing
+  StreamElements/Streamlabs-style alert box relies on sound working) —
+  `.play()` is wrapped in `.catch(() => {})` so a browser that does block it
+  just skips the sound instead of throwing.
 
 ## Network Share (Screenshots)
 The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.

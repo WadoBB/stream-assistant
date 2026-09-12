@@ -66,6 +66,8 @@
   <div class="sub-line" id="ra-sub"></div>
 </div>
 
+<audio id="cheer-sound" src="/overlay/cheer.mp3" preload="auto"></audio>
+
 <script>
   // Polls the local controller for the latest record event. Only flashes an
   // event once per page load per race_id, and only if it's recent - guards
@@ -87,6 +89,14 @@
 
     const el = document.getElementById('record-alert');
     el.classList.add('show');
+
+    // OBS Browser Sources generally allow audio autoplay without a prior
+    // user gesture (that's how every existing alert-box overlay relies on
+    // sound working), but .catch() here so a browser that DOES block it
+    // just skips the sound silently instead of throwing.
+    const sound = document.getElementById('cheer-sound');
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
 
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);

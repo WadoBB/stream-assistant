@@ -31,6 +31,7 @@ CREDENTIALS_FOLDER      = r"C:\StreamAssistant\ai-computer\credentials"
 OVERLAY_FOLDER          = r"C:\StreamAssistant\ai-computer\overlay"
 OVERLAY_HTML            = r"C:\StreamAssistant\ai-computer\overlay\index.html"
 OVERLAY_STATE_FILE      = r"C:\StreamAssistant\ai-computer\overlay\state.json"
+OVERLAY_SOUND_FILE      = r"C:\StreamAssistant\ai-computer\overlay\cheer.mp3"
 
 # --- Anthropic API ---
 # Key is loaded from credentials\.env - never hardcode here

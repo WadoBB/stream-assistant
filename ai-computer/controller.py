@@ -18,7 +18,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, send_file
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
-                     OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE)
+                     OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE)
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -143,6 +143,14 @@ def overlay_page():
     session) so the Browser Source doesn't go blank between sessions.
     """
     return send_file(OVERLAY_HTML)
+
+
+@app.route("/overlay/cheer.mp3", methods=["GET"])
+def overlay_sound():
+    """Serves the sound clip index.html plays when a new record fires."""
+    if not os.path.exists(OVERLAY_SOUND_FILE):
+        return jsonify({"status": "error", "message": "No sound file configured"}), 404
+    return send_file(OVERLAY_SOUND_FILE)
 
 
 @app.route("/overlay/state", methods=["GET"])
