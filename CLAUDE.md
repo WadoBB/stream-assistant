@@ -40,6 +40,9 @@ The system intentionally runs across two computers to minimize load on the gamin
 - Runs `sheets_writer.py` — writes to Google Sheets
 - Hosts the shared network folder that the gaming PC writes screenshots to
 - Serves the stream overlay (`/overlay`, `/overlay/state`) via `controller.py`
+- Exposes `/overlay/test` and `/logs` on `controller.py` for remote diagnosis
+  from a Claude Code session running on the Gaming PC (see "Cross-Machine
+  Development" below) — no SSH or remote desktop needed for these checks
 
 **Important:** All code for both sides of the system lives on BOTH computers.
 This is intentional — it simplifies GitHub management and means either computer
@@ -59,6 +62,32 @@ can be fully restored from GitHub if lost.
 | 5000 | TCP      | Flask controller (Stream Deck toggle, stream overlay) |
 
 If IPs change, update `ai-computer/config.py` and both bat files in `gaming-pc/`.
+
+## Cross-Machine Development
+A Claude Code session working on this project runs on whichever computer
+launched it — often the Gaming PC — and has no filesystem or terminal access
+to the other machine. SSH was attempted (2026-09-11) to fix this generally
+but hit repeated friction with Windows OpenSSH setup (`Add-WindowsCapability`
+parameter errors) and was abandoned in favor of a lighter approach: extend
+`controller.py`, which is already a Flask server reachable from either
+machine over the LAN (same path the Stream Deck `/toggle` already uses
+reliably), with narrow, purpose-built diagnostic endpoints instead of general
+remote access:
+
+- `GET /overlay/test` — writes a fake overlay event (optionally overriding
+  car/track/class/time via query params) so the stream overlay can be
+  verified end-to-end from either machine without racing or hand-writing
+  `overlay/state.json`.
+- `GET /logs?file=controller|stream_assistant|telemetry&lines=N` — returns
+  the last N lines of one of this machine's log files as JSON, so they can
+  be read remotely instead of relayed by hand. `file` is an allowlist, not a
+  free-form path.
+
+**When a future task needs to inspect or trigger something on the machine
+this session isn't running on, prefer adding a narrow endpoint like these
+over asking the user to relay commands or output by hand** — it's proven
+more reliable than remote-access setup on this two-machine, two-OS-account
+Windows LAN, and each endpoint added this way stays useful for next time.
 
 ## Stream Overlay — New Record Alert
 Flashes a "NEW RECORD!" alert in OBS when a race beats the cached Best by

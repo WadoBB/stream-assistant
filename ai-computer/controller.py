@@ -14,10 +14,19 @@ import json
 import logging
 import subprocess
 import threading
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, send_file
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
-                     OVERLAY_HTML, OVERLAY_STATE_FILE)
+                     OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE)
+
+# Log files this instance will hand back over /logs - an allowlist, not a
+# free-form path, so this can never be used to read arbitrary files.
+ALLOWED_LOGS = {
+    "controller":       "controller.log",
+    "stream_assistant": "stream_assistant.log",
+    "telemetry":        "telemetry.log",
+}
 
 MAIN_SCRIPT = r"C:\StreamAssistant\ai-computer\main.py"
 PYTHON_EXE = r"C:\Users\benny\AppData\Local\Programs\Python\Python313\python.exe"
@@ -42,6 +51,12 @@ logging.basicConfig(
     ]
 )
 log = logging.getLogger(__name__)
+
+# Flask's dev server logs every request at INFO via the 'werkzeug' logger -
+# harmless for occasional /toggle calls, but the overlay page now polls
+# /overlay/state every 1.5s, which floods the console/log with routine 200s.
+# Real problems still surface: Werkzeug logs its own errors at WARNING+.
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 # =============================================================
 # Flask app
@@ -146,6 +161,77 @@ def overlay_state():
     except Exception as e:
         log.warning(f"Could not read overlay state file: {e}")
         return jsonify({})
+
+
+@app.route("/overlay/test", methods=["GET"])
+def overlay_test():
+    """
+    Manual test trigger for the overlay - writes a fake event straight to
+    overlay/state.json, the same file sheets_writer.py writes for a real
+    record. Exists so the overlay can be verified end-to-end (page load,
+    poll, animation) from a browser or a remote HTTP call without needing to
+    hand-craft the JSON file on this machine, or race for real. Every call
+    gets a fresh race_id so the overlay page always treats it as new.
+
+    Optional query params override the canned defaults:
+    /overlay/test?car=...&track=...&class=...&time=...&previous_time=...
+    """
+    event = {
+        "race_id":       f"test-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+        "car":           request.args.get("car", "2019 Chevrolet Chevelle SS"),
+        "track":         request.args.get("track", "Goliath"),
+        "class":         request.args.get("class", "S1"),
+        "time":          request.args.get("time", "2:14.902"),
+        "previous_time": request.args.get("previous_time", "2:16.310"),
+        "timestamp":     datetime.now().isoformat()
+    }
+    try:
+        os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+        tmp_path = OVERLAY_STATE_FILE + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(event, f)
+        os.replace(tmp_path, OVERLAY_STATE_FILE)
+        log.info(f"Test overlay event written: {event}")
+        return jsonify({"status": "ok", "event": event})
+    except Exception as e:
+        log.error(f"Failed to write test overlay event: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/logs", methods=["GET"])
+def get_logs():
+    """
+    Returns the last N lines of one of this machine's log files, so it can
+    be read remotely instead of relayed by hand. ?file= must be one of
+    ALLOWED_LOGS' keys (default 'controller'); ?lines= defaults to 100 and
+    is capped at 2000 to keep the response reasonable.
+    """
+    file_key = request.args.get("file", "controller")
+    if file_key not in ALLOWED_LOGS:
+        return jsonify({
+            "status": "error",
+            "message": f"Unknown file '{file_key}'. Choose from: {', '.join(ALLOWED_LOGS)}"
+        }), 400
+
+    try:
+        n_lines = min(int(request.args.get("lines", 100)), 2000)
+    except ValueError:
+        n_lines = 100
+
+    path = os.path.join(LOGS_FOLDER, ALLOWED_LOGS[file_key])
+    if not os.path.exists(path):
+        return jsonify({"status": "error", "message": f"{path} does not exist yet"}), 404
+
+    try:
+        with open(path, "r", errors="replace") as f:
+            lines = f.readlines()
+        return jsonify({
+            "status": "ok",
+            "file": ALLOWED_LOGS[file_key],
+            "lines": [l.rstrip("\n") for l in lines[-n_lines:]]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # =============================================================
