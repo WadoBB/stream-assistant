@@ -11,12 +11,13 @@
 
 import os
 import json
+import time
 import logging
 import subprocess
 import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, Response
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
@@ -57,9 +58,9 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # Flask's dev server logs every request at INFO via the 'werkzeug' logger -
-# harmless for occasional /toggle calls, but the overlay page now polls
-# /overlay/state every 1.5s, which floods the console/log with routine 200s.
-# Real problems still surface: Werkzeug logs its own errors at WARNING+.
+# harmless for occasional /toggle calls, but floods the console/log if left
+# on for anything higher-frequency. Real problems still surface: Werkzeug
+# logs its own errors at WARNING+.
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 # =============================================================
@@ -68,6 +69,49 @@ logging.getLogger('werkzeug').setLevel(logging.WARNING)
 app = Flask(__name__)
 pipeline_process = None
 pipeline_lock    = threading.Lock()
+
+
+def _sse_stream(state_file_path):
+    """
+    Server-Sent Events generator: watches state_file_path for changes (by
+    modification time, checked every second in a plain server-side loop) and
+    pushes its contents the moment it changes.
+
+    This replaced client-side polling (a page repeatedly fetching /overlay
+    or /car_card state on a setTimeout loop) after both overlays proved
+    unreliable during a long OBS session - working right after the Browser
+    Source was freshly added, then silently going quiet, recoverable only by
+    removing and re-adding the source. The polling loop's own code couldn't
+    explain that (its reschedule happens unconditionally, outside any error
+    path), which points at the browser/OBS throttling or stalling the JS
+    timer for a source it considers inactive/backgrounded - a known category
+    of behavior for setTimeout/setInterval loops, and not something fixable
+    from inside the loop itself. Moving the "wait for new data" responsibility
+    server-side (a plain Python loop here, never throttled) and letting the
+    client's EventSource - which browsers handle far more robustly, including
+    automatic reconnection if this connection drops, e.g. across a
+    controller.py restart - just listen, sidesteps the whole problem rather
+    than patching around it again.
+    """
+    last_mtime = None
+    while True:
+        try:
+            if os.path.exists(state_file_path):
+                mtime = os.path.getmtime(state_file_path)
+                if mtime != last_mtime:
+                    last_mtime = mtime
+                    with open(state_file_path) as f:
+                        data = f.read()
+                    yield f"data: {data}\n\n"
+                else:
+                    yield ": heartbeat\n\n"   # keeps the connection alive, ignored by EventSource
+            else:
+                yield ": heartbeat\n\n"
+        except GeneratorExit:
+            raise
+        except Exception as e:
+            log.error(f"SSE stream error for {state_file_path}: {e}")
+        time.sleep(1)
 
 
 def _find_orphaned_pipeline_pid():
@@ -228,6 +272,17 @@ def overlay_state():
         return jsonify({})
 
 
+@app.route("/overlay/stream", methods=["GET"])
+def overlay_stream():
+    """
+    Server-Sent Events version of /overlay/state - see _sse_stream()'s doc
+    comment for why this replaced client-side polling. index.html uses this;
+    /overlay/state is kept for manual/curl verification (e.g. after firing
+    /overlay/test) and as a one-shot check independent of the live stream.
+    """
+    return Response(_sse_stream(OVERLAY_STATE_FILE), mimetype="text/event-stream")
+
+
 @app.route("/car_card", methods=["GET"])
 def car_card_page():
     """
@@ -253,6 +308,16 @@ def car_card_state():
     except Exception as e:
         log.warning(f"Could not read car card state file: {e}")
         return jsonify({})
+
+
+@app.route("/car_card/stream", methods=["GET"])
+def car_card_stream():
+    """
+    Server-Sent Events version of /car_card/state - see _sse_stream()'s doc
+    comment for why this replaced client-side polling. car_card.html uses
+    this; /car_card/state is kept for manual/curl verification.
+    """
+    return Response(_sse_stream(CAR_CARD_STATE_FILE), mimetype="text/event-stream")
 
 
 @app.route("/car_card/image/<ordinal>", methods=["GET"])
@@ -434,4 +499,8 @@ if __name__ == "__main__":
     log.info("Waiting for Stream Deck toggle requests...")
     log.info("=" * 55)
 
-    app.run(host="0.0.0.0", port=CONTROLLER_PORT, debug=False)
+    # threaded=True is required now that /overlay/stream and /car_card/stream
+    # hold a connection open indefinitely (Server-Sent Events) - without it,
+    # Werkzeug's dev server handles one request at a time, and a single open
+    # SSE connection would block /toggle, /status, everything else.
+    app.run(host="0.0.0.0", port=CONTROLLER_PORT, debug=False, threaded=True)

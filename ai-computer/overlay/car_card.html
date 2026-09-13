@@ -89,12 +89,12 @@
 <audio id="rev-sound" src="/car_card/rev.mp3" preload="auto"></audio>
 
 <script>
-  // Same polling pattern as index.html (the record alert), separate state
-  // file and endpoint. Car changes can happen in quick succession while
-  // browsing a garage - each new ordinal restarts the fade timer instead of
-  // fighting a previous one, so rapid browsing just keeps the card visible
-  // rather than flickering.
-  const POLL_MS = 1500;
+  // Same Server-Sent Events approach as index.html (the record alert) -
+  // see controller.py's _sse_stream() for why this replaced client-side
+  // polling. Separate stream/state endpoint from the record alert. Car
+  // changes can happen in quick succession while browsing a garage - each
+  // new ordinal restarts the fade timer instead of fighting a previous one,
+  // so rapid browsing just keeps the card visible rather than flickering.
   const MAX_AGE_MS = 60 * 1000;
   const SHOW_MS = 10000;
 
@@ -143,25 +143,24 @@
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
   }
 
-  async function poll() {
+  const source = new EventSource('/car_card/stream');
+  source.onmessage = (msg) => {
+    let event;
     try {
-      const resp = await fetch('/car_card/state', { cache: 'no-store' });
-      const event = await resp.json();
-
-      if (event && event.ordinal && event.ordinal !== lastOrdinal) {
-        const ageMs = Date.now() - new Date(event.timestamp).getTime();
-        lastOrdinal = event.ordinal;
-        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
-          showCard(event);
-        }
-      }
+      event = JSON.parse(msg.data);
     } catch (e) {
-      // Controller unreachable or pipeline not running yet - just retry next poll.
+      return;   // heartbeat lines never reach here, but be defensive
     }
-    setTimeout(poll, POLL_MS);
-  }
 
-  poll();
+    if (event && event.ordinal && event.ordinal !== lastOrdinal) {
+      const ageMs = Date.now() - new Date(event.timestamp).getTime();
+      lastOrdinal = event.ordinal;
+      if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+        showCard(event);
+      }
+    }
+  };
+  source.onerror = () => {};   // EventSource reconnects on its own
 </script>
 
 </body>

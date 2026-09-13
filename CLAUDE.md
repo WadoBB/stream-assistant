@@ -123,11 +123,30 @@ the cached Best by Track+Class time for that (Track, Class). Added
   the pipeline. A telemetry-only "instant teaser" tier was considered and
   explicitly declined in favor of one simple, always-accurate alert.
 - `controller.py` (always-running, not the toggled pipeline) serves the page
-  at `/overlay` and the current event as JSON at `/overlay/state`. Point an
-  OBS Browser Source at `http://192.168.137.230:5000/overlay`.
-- `ai-computer/overlay/index.html` polls `/overlay/state` every 1.5s, flashes
-  a 7-second animation on a new `race_id`, and ignores events older than 60
-  seconds so a Browser Source reload mid-stream doesn't replay a stale record.
+  at `/overlay`. Point an OBS Browser Source at
+  `http://192.168.137.230:5000/overlay`.
+- **Delivery is Server-Sent Events (`/overlay/stream`), not client polling**
+  (changed 2026-09-12 — see `_sse_stream()` in `controller.py`). The page
+  originally polled `/overlay/state` on a 1.5s `setTimeout` loop; that proved
+  unreliable during a long OBS session (worked right after the Browser
+  Source was freshly added, then silently stopped reacting, recoverable only
+  by removing and re-adding the source). Nothing in the polling loop's own
+  logic explained that — its reschedule ran unconditionally, outside any
+  error path — which points at the browser/OBS throttling or stalling a
+  `setTimeout` chain it considers backgrounded, a known category of browser
+  behavior that can't be fixed from inside the loop. `_sse_stream()` moves
+  "wait for new data" server-side (a plain Python loop watching
+  `overlay_state.json`'s mtime, never throttled), and the client just opens
+  an `EventSource`, which browsers handle far more robustly, including
+  automatic reconnection if the connection drops (e.g. a `controller.py`
+  restart). `/overlay/state` (plain JSON, one-shot) is kept for manual/curl
+  verification. This change requires `app.run(..., threaded=True)` in
+  `controller.py` — Werkzeug's dev server handles one request at a time by
+  default, and a single open SSE connection would otherwise block every
+  other route.
+- `ai-computer/overlay/index.html` flashes a 7-second animation on a new
+  `race_id` and ignores events older than 60 seconds so a Browser Source
+  reload mid-stream doesn't replay a stale record.
 - Plays `ai-computer/overlay/cheer.mp3` (served at `/overlay/cheer.mp3`) the
   moment the alert flashes in. OBS Browser Sources generally allow audio
   autoplay without a prior user gesture (this is how every existing
@@ -178,11 +197,17 @@ Cars tab first — see TODO.md).
   - All of this reads Cars-tab columns **by header name**, never hardcoded
     position — the whole Races/Wins saga earlier in this project was caused
     by hardcoded positions, and this was a chance not to repeat it.
-- `controller.py` serves the page at `/car_card`, state at `/car_card/state`,
-  car images at `/car_card/image/<ordinal>` (falls back to
+- `controller.py` serves the page at `/car_card`, car images at
+  `/car_card/image/<ordinal>` (falls back to
   `ai-computer/overlay/car_images/default_shadow.svg` if that ordinal has no
   image — images are per-user content, not something this codebase can
   source itself), and `/car_card/test` for manual triggering.
+- **Delivery is Server-Sent Events (`/car_card/stream`), same reasoning and
+  same `_sse_stream()` helper as the record alert above** — this page
+  originally polled `/car_card/state` too, and hit the identical
+  works-then-silently-stops-until-Browser-Source-is-recreated failure mode.
+  `/car_card/state` (plain JSON, one-shot) is kept for manual/curl
+  verification.
 - **Open wrinkle, not urgent:** `car_ordinal` identifies the car model, not
   the tune — a car built for both Road and Dirt is two different Cars-tab
   rows. Telemetry's live PI resolves Class the same way race results already

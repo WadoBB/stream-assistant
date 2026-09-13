@@ -69,11 +69,14 @@
 <audio id="cheer-sound" src="/overlay/cheer.mp3" preload="auto"></audio>
 
 <script>
-  // Polls the local controller for the latest record event. Only flashes an
+  // Listens for the latest record event via Server-Sent Events (server
+  // pushes the moment overlay_state.json changes - see controller.py's
+  // _sse_stream()) instead of the page repeatedly asking. Only flashes an
   // event once per page load per race_id, and only if it's recent - guards
   // against replaying an old record if the Browser Source reloads long after
-  // the event happened (e.g. OBS restart mid-stream).
-  const POLL_MS = 1500;
+  // the event happened (e.g. OBS restart mid-stream). EventSource itself
+  // handles reconnecting automatically if the connection ever drops (e.g. a
+  // controller.py restart) - no manual retry loop needed here.
   const MAX_AGE_MS = 60 * 1000;
   const SHOW_MS = 7000;
 
@@ -102,25 +105,26 @@
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
   }
 
-  async function poll() {
+  const source = new EventSource('/overlay/stream');
+  source.onmessage = (msg) => {
+    let event;
     try {
-      const resp = await fetch('/overlay/state', { cache: 'no-store' });
-      const event = await resp.json();
-
-      if (event && event.race_id && event.race_id !== lastRaceId) {
-        const ageMs = Date.now() - new Date(event.timestamp).getTime();
-        lastRaceId = event.race_id;   // mark seen regardless of age
-        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
-          showAlert(event);
-        }
-      }
+      event = JSON.parse(msg.data);
     } catch (e) {
-      // Controller unreachable or pipeline not running yet - just retry next poll.
+      return;   // heartbeat lines never reach here (no "data:" payload), but be defensive
     }
-    setTimeout(poll, POLL_MS);
-  }
 
-  poll();
+    if (event && event.race_id && event.race_id !== lastRaceId) {
+      const ageMs = Date.now() - new Date(event.timestamp).getTime();
+      lastRaceId = event.race_id;   // mark seen regardless of age
+      if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+        showAlert(event);
+      }
+    }
+  };
+  // onerror fires on a dropped connection; EventSource reconnects on its own,
+  // nothing to do here except avoid an uncaught-error console spam.
+  source.onerror = () => {};
 </script>
 
 </body>

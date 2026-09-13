@@ -344,6 +344,52 @@ ordinal/race_id, so this never comes up in actual gameplay. If this pattern
 resurfaces during future testing, vary the test parameters before assuming
 something is broken.
 
+**Correction, later the same night - there WAS also a real, separate
+reliability problem, now fixed.** After the false-alarm above was resolved,
+both overlays kept intermittently going quiet again even with varied test
+ordinals/race_ids - working right after a Browser Source was freshly added,
+then silently no longer reacting, recoverable only by removing and
+re-adding the source, repeatedly, unpredictably. See "Overlay Delivery
+Switched to Server-Sent Events" below for the actual fix - the client-side
+polling loop was very likely being throttled/stalled by the browser/OBS for
+a source it considered backgrounded, which is a different failure mode than
+the dedup false-alarm above and wasn't fully explained by it.
+
+### Overlay Delivery Switched to Server-Sent Events — fixed 2026-09-12
+Both the record alert and Car Card overlays originally worked by having the
+page repeatedly `fetch()` their state endpoint on a 1.5s `setTimeout` loop.
+This proved unreliable over a real OBS session on both overlays: each would
+work correctly right after its Browser Source was freshly added, then go
+quiet at some point after, only recoverable by removing and re-adding the
+source - a refresh alone wasn't always enough. Nothing in the polling loop's
+own code explained this (the `setTimeout` reschedule ran unconditionally,
+outside any try/catch), which points at the browser/OBS itself throttling or
+stalling a JS timer it considers backgrounded - a known category of browser
+behavior, not something fixable from inside the loop.
+
+**Fix:** moved the "wait for new data" responsibility server-side.
+`controller.py`'s `_sse_stream()` is a plain Python generator that watches a
+state file's modification time once a second and pushes its contents over a
+persistent Server-Sent Events connection the moment it changes - a
+server-side loop is never subject to browser tab-visibility throttling.
+`/overlay/stream` and `/car_card/stream` serve this; both pages now use
+`EventSource` instead of a polling loop, which also gets automatic
+reconnection on a dropped connection (e.g. a `controller.py` restart) for
+free from the browser, rather than needing a manual retry loop. The old
+`/overlay/state` and `/car_card/state` JSON endpoints are kept as-is for
+manual/curl verification (e.g. after `/overlay/test`) - only the pages
+themselves changed how they receive updates.
+
+**Required alongside this:** `app.run(..., threaded=True)` in
+`controller.py` - Werkzeug's dev server handles one request at a time by
+default, and a single open SSE connection would otherwise block `/toggle`,
+`/status`, and every other route for as long as a Browser Source stays
+connected (which is indefinitely).
+
+**Not yet confirmed live** - this needs a real OBS session, ideally a long
+one, to verify the "goes quiet after a while" symptom is actually gone and
+not just less frequent.
+
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through
 `telemetry_listener.py` to fire on any change, not just at race start.
