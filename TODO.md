@@ -343,6 +343,19 @@ separate ordinal source if this is ever extended there.
   `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
   OBS yet. Iterate the same way the record alert's position was confirmed:
   fire `/car_card/test`, look at the OBS preview, adjust the CSS, repeat.
+- **`/car_card/test?ordinal=N` now pulls real data instead of always
+  showing a canned Chevelle SS** - found while testing ordinals 2793/3670
+  (both unraced): the test endpoint ignored `car_ordinals.json` entirely, so
+  it showed fake stats on the correct image, misleading about what the
+  overlay would actually show for that car. `test_car_card.py` (new,
+  mirrors `sync_ordinals.py`'s pattern) runs `update_car_card()` - the same
+  function the live pipeline calls on a car change - as a subprocess, and
+  `/car_card/test?ordinal=N` uses it whenever no other override param is
+  given, correctly showing "not yet raced" for an unmatched car instead of
+  fake stats. Passing any of the old override params (`full_name`,
+  `car_name`, etc.) still uses the original fully-canned path, for testing
+  card layout with arbitrary data; bare `/car_card/test` (no params) also
+  stays canned, for a quick connectivity/animation smoke test.
 
 **2026-09-12 debugging note - a false alarm worth remembering, not a real
 bug:** repeated `/car_card/test` and `/overlay/test` calls with default

@@ -24,6 +24,7 @@ from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLD
                      CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
+TEST_CAR_CARD_SCRIPT = r"C:\StreamAssistant\ai-computer\test_car_card.py"
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -429,11 +430,68 @@ def car_card_lookup():
 @app.route("/car_card/test", methods=["GET"])
 def car_card_test():
     """
-    Manual test trigger for the Car Card - writes a fake event straight to
-    car_card_state.json. Optional query params override the canned defaults:
+    Manual test trigger for the Car Card.
+
+    /car_card/test?ordinal=<N> (with no other override params) now pulls
+    REAL data by running update_car_card() - the exact same function the
+    live pipeline calls on a car change - as a subprocess (keeps
+    controller.py itself free of the Google API dependency, same reasoning
+    as /car_card/sync_ordinals). Correctly shows "not yet raced" / blank
+    stats for a car that hasn't matched a Cars tab row, instead of always
+    showing canned placeholder data regardless of the ordinal - added
+    2026-09-12 after that mismatch caused confusion testing ordinals like
+    2793/3670 that had never been raced. Optional ?class=...&game=FH5|FH6
+    (default FH6) apply to this path only.
+
+    Passing any of full_name/car_name/year/mfg/model/tuner/painter/races
+    /wins/win_rate (with or without ordinal) instead uses the original
+    fully-canned override behavior - useful for testing card layout/UI with
+    arbitrary data unrelated to any real car:
     /car_card/test?full_name=...&car_name=...&year=...&mfg=...&model=...
       &tuner=...&painter=...&races=...&wins=...&win_rate=...&ordinal=...
+    Bare /car_card/test (no params at all) also uses this canned path, for
+    a quick connectivity/animation smoke test independent of real data.
     """
+    override_keys = ("full_name", "car_name", "year", "mfg", "model",
+                      "tuner", "painter", "races", "wins", "win_rate")
+    has_override = any(request.args.get(k) is not None for k in override_keys)
+    has_ordinal = request.args.get("ordinal") is not None
+
+    if has_ordinal and not has_override:
+        ordinal = request.args.get("ordinal")
+        live_class = request.args.get("class", "")
+        game = request.args.get("game", "FH6").upper()
+        if game not in ("FH5", "FH6"):
+            return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+        try:
+            result = subprocess.run(
+                [PYTHON_EXE, TEST_CAR_CARD_SCRIPT, ordinal, live_class, game],
+                cwd=r"C:\StreamAssistant\ai-computer",
+                capture_output=True, text=True, timeout=30
+            )
+            try:
+                parsed = json.loads(result.stdout.strip())
+            except (ValueError, AttributeError):
+                return jsonify({
+                    "status": "error",
+                    "message": "test_car_card.py did not return valid JSON",
+                    "stdout": result.stdout.strip(),
+                    "stderr": result.stderr.strip()
+                }), 500
+            if parsed.get("status") != "ok":
+                return jsonify(parsed), 500
+
+            event = {}
+            if os.path.exists(CAR_CARD_STATE_FILE):
+                with open(CAR_CARD_STATE_FILE) as f:
+                    event = json.load(f)
+            log.info(f"Real-data car card test fired for ordinal {ordinal}: {event}")
+            return jsonify({"status": "ok", "event": event, "source": "real"})
+        except subprocess.TimeoutExpired:
+            return jsonify({"status": "error", "message": "test_car_card.py timed out"}), 500
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
     event = {
         "ordinal":   request.args.get("ordinal", "999999"),
         "full_name": request.args.get("full_name", "2019 Chevrolet Chevelle SS"),
