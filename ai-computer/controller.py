@@ -24,6 +24,7 @@ from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLD
                      CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
+SYNC_CAR_NAMES_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_car_names_from_sheet.py"
 TEST_CAR_CARD_SCRIPT = r"C:\StreamAssistant\ai-computer\test_car_card.py"
 EXPORT_UNMATCHED_SCRIPT = r"C:\StreamAssistant\ai-computer\export_unmatched_ordinals.py"
 APPLY_ORDINAL_MATCHES_SCRIPT = r"C:\StreamAssistant\ai-computer\apply_ordinal_matches.py"
@@ -392,6 +393,42 @@ def sync_ordinals():
             }), 500
     except subprocess.TimeoutExpired:
         return jsonify({"status": "error", "message": "sync_ordinals.py timed out"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/car_card/sync_car_names", methods=["GET"])
+def sync_car_names():
+    """
+    Reverse of /car_card/sync_ordinals: for every Cars-tab row that already
+    has an Ordinal set, backfills car_ordinals.json's car_name for that
+    ordinal if it's still null. Closes a gap where a car matched by the
+    identity-match sync (or the AI-reasoning pass) ends up fully resolved
+    on the Sheet but still shows car_name: null in the JSON, since neither
+    of those paths writes car_name. Runs as a subprocess, same reasoning as
+    /car_card/sync_ordinals. ?game=FH5|FH6 selects which spreadsheet
+    (default FH6).
+    """
+    game = request.args.get("game", "FH6").upper()
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+    try:
+        result = subprocess.run(
+            [PYTHON_EXE, SYNC_CAR_NAMES_SCRIPT, game],
+            cwd=r"C:\StreamAssistant\ai-computer",
+            capture_output=True, text=True, timeout=60
+        )
+        try:
+            return jsonify(json.loads(result.stdout.strip()))
+        except (ValueError, AttributeError):
+            return jsonify({
+                "status": "error",
+                "message": "sync_car_names_from_sheet.py did not return valid JSON",
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip()
+            }), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "sync_car_names_from_sheet.py timed out"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

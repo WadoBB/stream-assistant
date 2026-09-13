@@ -649,6 +649,55 @@ class SheetsWriter:
                 "skipped_no_match": skipped_no_match,
                 "skipped_already_set": skipped_already_set}
 
+    def sync_car_names_from_sheet(self):
+        """
+        Reverse direction of sync_ordinals_from_seed(): for every Cars-tab
+        row that already has an Ordinal set, backfills car_ordinals.json's
+        car_name for that ordinal if it's still null. Read-only against the
+        Sheet - only ever writes to the local JSON file.
+
+        Closes a real gap: sync_ordinals_from_seed()'s identity-match path
+        (Year+MFG+Model string match) sets the Sheet's Ordinal but never
+        touches car_ordinals.json at all, so a car matched that way (or via
+        the AI-reasoning pass, before its own JSON write was added) can end
+        up fully resolved on the Sheet while still showing car_name: null
+        in the JSON - found via ordinal 1009 (2008 Mitsubishi Lancer
+        Evolution X GSR), matched by the very first identity-match run.
+        Only fills a blank car_name; never overwrites one already set.
+        Returns a summary dict; meant to be run on demand, same as
+        sync_ordinals_from_seed().
+        """
+        if not self._car_ordinals_loaded:
+            self._load_car_ordinals()
+        if not self._car_card_loaded:
+            self._load_car_card_cache()
+
+        backfilled = []
+        skipped_no_ordinal_entry = 0
+        skipped_already_set = 0
+
+        for ordinal_str, row in self._cars_by_ordinal.items():
+            car_name = row.get("car_name")
+            if not car_name:
+                continue
+            entry = self._car_ordinals.get(ordinal_str)
+            if entry is None:
+                skipped_no_ordinal_entry += 1
+                continue
+            if entry.get("car_name"):
+                skipped_already_set += 1
+                continue
+            entry["car_name"] = car_name
+            backfilled.append({"ordinal": ordinal_str, "car_name": car_name, "row": row["row_number"]})
+
+        if backfilled:
+            self._save_car_ordinals()
+
+        log.info(f"Backfilled car_name for {len(backfilled)} car_ordinals.json entr(y/ies) from the Sheet")
+        return {"status": "ok", "backfilled": len(backfilled), "rows": backfilled,
+                "skipped_no_ordinal_entry": skipped_no_ordinal_entry,
+                "skipped_already_set": skipped_already_set}
+
     def update_car_stats(self):
         """
         Tally races and wins per (Car Name, Class, Type) from the full Results

@@ -346,6 +346,19 @@ separate ordinal source if this is ever extended there.
     when a car is actually raced (it needs the scoreboard's OCR'd name,
     which this sync has no access to). Seeing `car_name: null` in the JSON
     after running the sync is expected, not a sign the sync failed.
+    - **2026-09-13 fix, this gap closed properly:** found via ordinal 1009
+      (2008 Mitsubishi Lancer Evolution X GSR) - fully resolved on the
+      Sheet (Ordinal + Car Name both set, matched by the very first
+      identity-match run) but still `car_name: null` in the JSON, since
+      that run predates this file even being touched for `car_name` at
+      all. Added `sync_car_names_from_sheet()` (also standalone
+      `sync_car_names_from_sheet.py`, also `GET
+      /car_card/sync_car_names?game=FH5|FH6`) - the reverse direction of
+      `sync_ordinals_from_seed()`: for every Cars-tab row that already has
+      an Ordinal, backfills `car_ordinals.json`'s `car_name` for that
+      ordinal if still null. Read-only against the Sheet, only ever writes
+      the local JSON. Run once after the identity-match sync (or anytime
+      the two are suspected to have drifted) to close this gap in bulk.
   - **2026-09-12, later - AI-matching pass for what exact matching can't
     place.** `sync_ordinals_from_seed()` deliberately never fuzzy-matches
     (a wrong car getting an ordinal is worse than a missed one), which
