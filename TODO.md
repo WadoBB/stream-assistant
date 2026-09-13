@@ -6,6 +6,43 @@ Items are loosely ordered by priority. Update this file as things are resolved o
 
 ## Active / In Progress
 
+### Controller Restart Orphans the Pipeline — fixed 2026-09-12
+`controller.py` tracked the running pipeline in `pipeline_process`, a plain
+in-memory variable. Every time `controller.py` itself restarted (which
+happened three times in one night while testing new routes), that variable
+reset to `None` - even though a previously-started `main.py` kept running
+untouched on the OS. `is_running()` then permanently reported "stopped" for
+a pipeline that was actually still alive.
+
+**How this actually broke things:** the Gaming PC's `toggle_fh6.bat` checks
+`/status` to decide whether to take the start or stop branch. With
+`controller.py`'s tracking desynced from reality, a press intended to *stop*
+a running pipeline instead saw "stopped" and took the *start* branch -
+spinning up a second `main.py`, which immediately crashed trying to bind
+UDP port 9999 (already held by the orphaned first one). From the user's
+side this looked like "the toggle stops it and immediately starts it again"
+plus "the process fails to start on the AI Computer" - two symptoms, one
+root cause. Confirmed via `stream_assistant.log`: two consecutive
+`"Starting Telemetry Listener..."` lines with no `"Telemetry listener
+started on port 9999"` after either - the crash is confined to
+`socket.bind()`, three lines of code nothing tonight had touched - and via
+Task Manager showing two live `python.exe` processes.
+
+**Fix:** `is_running()` now falls back to asking Windows directly
+(`Get-CimInstance Win32_Process` filtered to a command line containing
+`main.py`) whenever its own in-memory handle doesn't know of a running
+process, so a `controller.py` restart can no longer permanently orphan the
+pipeline. `/toggle`'s stop path now `taskkill`s an orphan found this way
+(no `Popen` handle exists to call `.terminate()` on). `/status` was fixed to
+not crash calling `.pid` on a `None` handle when a running pipeline was
+found via this fallback rather than the in-memory one.
+
+**Recovery from an already-orphaned state:** find the extra `python.exe`
+via `Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Select
+ProcessId, CommandLine` (Task Manager alone doesn't show command-line args),
+end the one running `main.py` specifically - not `controller.py` - and
+restart the toggle from a clean state.
+
 ### New-Record Stream Overlay — built and verified live 2026-09-11/12
 Flashes a "NEW RECORD!" alert (with a cheer sound) on stream when a race
 beats the cached Best by Track+Class time for that (Track, Class). Confirmed
@@ -288,6 +325,24 @@ separate ordinal source if this is ever extended there.
   `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
   OBS yet. Iterate the same way the record alert's position was confirmed:
   fire `/car_card/test`, look at the OBS preview, adjust the CSS, repeat.
+
+**2026-09-12 debugging note - a false alarm worth remembering, not a real
+bug:** repeated `/car_card/test` and `/overlay/test` calls with default
+params appeared to "stop working," only recovering after refreshing the
+Browser Source/removing and re-adding it. Root cause: both pages
+deliberately suppress re-showing the *same* event twice in a row (only fire
+when `ordinal`/`race_id` changes from the last one shown - correct,
+intentional behavior, otherwise the card would flash every 1.5s poll while
+sitting in the same car). Every test call was reusing the same default
+`ordinal: "999999"`, so the page correctly treated repeated test-fires as
+"nothing new." A refresh resets that "last seen" memory, which is why it
+looked temporarily fixed each time. Confirmed with two back-to-back
+`/car_card/test?ordinal=...` calls using *different* ordinals, no refresh in
+between - both displayed correctly. **Not a dependability concern for real
+use** - every genuine car change or race produces a distinct
+ordinal/race_id, so this never comes up in actual gameplay. If this pattern
+resurfaces during future testing, vary the test parameters before assuming
+something is broken.
 
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through

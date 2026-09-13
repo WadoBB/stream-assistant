@@ -70,10 +70,46 @@ pipeline_process = None
 pipeline_lock    = threading.Lock()
 
 
+def _find_orphaned_pipeline_pid():
+    """
+    Asks Windows directly whether a main.py process is running, independent
+    of whether THIS controller.py process remembers starting it. Needed
+    because pipeline_process is a plain in-memory variable - it resets to
+    None every time controller.py itself restarts, even though a
+    previously-started main.py keeps running untouched. Without this, a
+    controller.py restart orphans the pipeline: is_running() reports False
+    forever after, so /toggle keeps trying to start a second main.py
+    instead of ever stopping (or recognizing) the first, which then fails to
+    bind port 9999 - see TODO.md's "Controller Restart Orphans the Pipeline"
+    entry for the incident that surfaced this. Returns a PID or None.
+    """
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
+             "Where-Object { $_.CommandLine -like '*main.py*' } | "
+             "Select-Object -First 1 -ExpandProperty ProcessId)"],
+            capture_output=True, text=True, timeout=10
+        )
+        pid_str = result.stdout.strip()
+        return int(pid_str) if pid_str.isdigit() else None
+    except Exception as e:
+        log.error(f"Failed to check OS for an orphaned pipeline process: {e}")
+        return None
+
+
 def is_running():
-    """Check if the pipeline process is currently running."""
+    """
+    Checks whether the pipeline is actually running - first the fast path
+    (this controller.py process's own handle to it), then falling back to
+    asking the OS directly in case a previous controller.py instance started
+    it and this one never knew. See _find_orphaned_pipeline_pid()'s doc
+    comment for why the fallback exists.
+    """
     global pipeline_process
-    return pipeline_process is not None and pipeline_process.poll() is None
+    if pipeline_process is not None and pipeline_process.poll() is None:
+        return True
+    return _find_orphaned_pipeline_pid() is not None
 
 
 @app.route("/toggle", methods=["GET"])
@@ -92,11 +128,21 @@ def toggle():
         if is_running():
             log.info("Stopping pipeline...")
             try:
-                pipeline_process.terminate()
-                pipeline_process.wait(timeout=5)
+                if pipeline_process is not None and pipeline_process.poll() is None:
+                    pipeline_process.terminate()
+                    pipeline_process.wait(timeout=5)
+                else:
+                    # No in-memory handle (this controller.py didn't start
+                    # it, or restarted since) - find and kill it via the OS.
+                    orphan_pid = _find_orphaned_pipeline_pid()
+                    if orphan_pid:
+                        log.info(f"Stopping orphaned pipeline process (PID: {orphan_pid})")
+                        subprocess.run(["taskkill", "/f", "/pid", str(orphan_pid)],
+                                        capture_output=True, timeout=10)
             except Exception as e:
                 log.error(f"Error stopping pipeline: {e}")
-                pipeline_process.kill()
+                if pipeline_process is not None:
+                    pipeline_process.kill()
 
             pipeline_process = None
             log.info("Pipeline stopped")
@@ -124,10 +170,17 @@ def toggle():
 
 @app.route("/status", methods=["GET"])
 def status():
-    """Return current pipeline status."""
+    """
+    Return current pipeline status. pid is this controller.py process's own
+    handle's PID when available; if the pipeline is running but was found
+    via the OS fallback (orphaned from a previous controller.py instance -
+    see is_running()), pipeline_process is None here, so pid comes back
+    null even though the pipeline genuinely is running.
+    """
+    running = is_running()
     return jsonify({
-        "status":   "running" if is_running() else "stopped",
-        "pid":      pipeline_process.pid if is_running() else None
+        "status": "running" if running else "stopped",
+        "pid":    pipeline_process.pid if (running and pipeline_process is not None) else None
     })
 
 

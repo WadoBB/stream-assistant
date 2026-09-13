@@ -70,9 +70,8 @@ to the other machine. SSH was attempted (2026-09-11) to fix this generally
 but hit repeated friction with Windows OpenSSH setup (`Add-WindowsCapability`
 parameter errors) and was abandoned in favor of a lighter approach: extend
 `controller.py`, which is already a Flask server reachable from either
-machine over the LAN (same path the Stream Deck `/toggle` already uses
-reliably), with narrow, purpose-built diagnostic endpoints instead of general
-remote access:
+machine over the LAN (the same path the Stream Deck `/toggle` uses), with
+narrow, purpose-built diagnostic endpoints instead of general remote access:
 
 - `GET /overlay/test` — writes a fake overlay event (optionally overriding
   car/track/class/time via query params) so the stream overlay can be
@@ -88,6 +87,20 @@ this session isn't running on, prefer adding a narrow endpoint like these
 over asking the user to relay commands or output by hand** — it's proven
 more reliable than remote-access setup on this two-machine, two-OS-account
 Windows LAN, and each endpoint added this way stays useful for next time.
+`/logs?file=stream_assistant` was exactly how the "Controller Restart
+Orphans the Pipeline" bug (see TODO.md) got diagnosed remotely — comparing
+two startup sequences line-by-line pinpointed the exact three lines of code
+the crash was confined to, without needing to be on the AI Computer at all.
+
+**`controller.py`'s own process tracking has a sharp edge worth remembering
+if it's touched again:** `pipeline_process` is a plain in-memory variable,
+so restarting `controller.py` itself (as happens often while iterating on
+its routes) makes it forget any pipeline `main.py` already started -
+`is_running()` now falls back to asking Windows directly
+(`Get-CimInstance Win32_Process`) rather than trusting that variable alone,
+specifically to survive this. Any other state `controller.py` needs to
+track across its own restarts should follow the same pattern (ask the OS,
+don't just trust memory) rather than repeating this bug in a new form.
 
 ## Stream Overlay — New Record Alert
 Flashes a "NEW RECORD!" alert (plus a cheer sound) in OBS when a race beats
