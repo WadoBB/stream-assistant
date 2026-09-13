@@ -339,6 +339,35 @@ separate ordinal source if this is ever extended there.
     it. Also fixed two wrong seed entries found this way: ordinal 249 was
     listed as "1964 Ferrari 250 GTO" (should be 1962), ordinal 255 as "1991
     Ferrari 512 TR" (should be 1992).
+  - **Important distinction, caused real confusion once:** this identity
+    match only ever writes the Cars tab's Ordinal column. It does **not**
+    touch `car_ordinals.json`'s `car_name` field - that field is null for
+    every unraced car and can only be filled in by `learn_car_ordinal()`
+    when a car is actually raced (it needs the scoreboard's OCR'd name,
+    which this sync has no access to). Seeing `car_name: null` in the JSON
+    after running the sync is expected, not a sign the sync failed.
+  - **2026-09-12, later - AI-matching pass for what exact matching can't
+    place.** `sync_ordinals_from_seed()` deliberately never fuzzy-matches
+    (a wrong car getting an ordinal is worse than a missed one), which
+    leaves real naming differences unmatched - e.g. a scoreboard's
+    abbreviated "Chevelle SS" vs. the seed's "2019 Chevrolet Chevelle SS" -
+    that a human or an AI can resolve by reasoning about it but a strict
+    string comparison can't. Added a read/reason/write-back pipeline for
+    that gap, at the user's request ("this is exactly the kind of thing I
+    would want to use AI for") rather than having them eyeball 400+ entries
+    manually against the ordinal-ordered seed list:
+    - `export_unmatched_ordinals.py` (also `GET /car_card/export_unmatched
+      ?game=FH5|FH6`) - dumps every Cars-tab row still missing Ordinal
+      alongside every seed entry not yet claimed by any row. Read-only,
+      makes no matching decision itself.
+    - `apply_ordinal_matches.py` (also `POST /car_card/apply_ordinal_matches`,
+      body `{"game": ..., "matches": [{"row_number", "ordinal", "car_name"}]}`)
+      - writes back a judged match list: Ordinal on the Cars tab row, and
+      car_name on the matching car_ordinals.json entry (only if not already
+      set) - the same two writes `learn_car_ordinal()` makes for a real
+      race, just arriving via reasoning instead of racing. Re-checks the
+      row/ordinal are still unset at write time, so a stale match list from
+      an earlier export can't clobber anything.
 - **Card position still needs live tuning** - current CSS puts it at
   `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
   OBS yet. Iterate the same way the record alert's position was confirmed:

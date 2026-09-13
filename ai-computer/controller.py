@@ -25,6 +25,8 @@ from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLD
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 TEST_CAR_CARD_SCRIPT = r"C:\StreamAssistant\ai-computer\test_car_card.py"
+EXPORT_UNMATCHED_SCRIPT = r"C:\StreamAssistant\ai-computer\export_unmatched_ordinals.py"
+APPLY_ORDINAL_MATCHES_SCRIPT = r"C:\StreamAssistant\ai-computer\apply_ordinal_matches.py"
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -392,6 +394,99 @@ def sync_ordinals():
         return jsonify({"status": "error", "message": "sync_ordinals.py timed out"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/car_card/export_unmatched", methods=["GET"])
+def export_unmatched():
+    """
+    Exports everything sync_ordinals_from_seed()'s exact matching (learned
+    car_name, or exact "{Year} {MFG} {Model}" string) couldn't place: Cars
+    tab rows still missing Ordinal, and seed entries not yet used by any
+    row. Deliberately read-only and unopinionated about matching itself -
+    exact string matching was a deliberate choice to avoid a wrong car
+    getting an ordinal, so closing the gap for real naming differences
+    (abbreviations, reordered words) needs judgment this can't safely
+    automate; this just hands over the raw data for that judgment call to
+    be made elsewhere (by a human or by an AI reasoning over it) before
+    /car_card/apply_ordinal_matches writes anything back.
+    ?game=FH5|FH6 selects which spreadsheet (default FH6).
+    """
+    game = request.args.get("game", "FH6").upper()
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+    try:
+        result = subprocess.run(
+            [PYTHON_EXE, EXPORT_UNMATCHED_SCRIPT, game],
+            cwd=r"C:\StreamAssistant\ai-computer",
+            capture_output=True, text=True, timeout=60
+        )
+        try:
+            return jsonify(json.loads(result.stdout.strip()))
+        except (ValueError, AttributeError):
+            return jsonify({
+                "status": "error",
+                "message": "export_unmatched_ordinals.py did not return valid JSON",
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip()
+            }), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "export_unmatched_ordinals.py timed out"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/car_card/apply_ordinal_matches", methods=["POST"])
+def apply_ordinal_matches():
+    """
+    Writes back a set of ordinal<->Cars-tab-row matches that couldn't be
+    made by exact string matching (see /car_card/export_unmatched) and were
+    instead judged by a human or an AI reasoning over the raw data. Backfills
+    both the Cars tab's Ordinal column AND car_ordinals.json's car_name for
+    each match, the same two writes learn_car_ordinal() does when a car is
+    actually raced - this is the same knowledge, just arriving via reasoning
+    over names instead of a live race. POST body:
+    {"game": "FH5"|"FH6", "matches": [{"row_number": N, "ordinal": "N",
+     "car_name": "..."}]}
+    Only fills car_name if not already set, and only writes Ordinal if the
+    row's Ordinal is still blank at write time - never overwrites existing
+    data, so a stale or duplicate match list can't clobber anything.
+    """
+    body = request.get_json(silent=True) or {}
+    game = str(body.get("game", "FH6")).upper()
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+    matches = body.get("matches")
+    if not isinstance(matches, list) or not matches:
+        return jsonify({"status": "error", "message": "matches must be a non-empty list"}), 400
+
+    tmp_path = os.path.join(LOGS_FOLDER, "_ordinal_matches.tmp.json")
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(matches, f)
+        result = subprocess.run(
+            [PYTHON_EXE, APPLY_ORDINAL_MATCHES_SCRIPT, tmp_path, game],
+            cwd=r"C:\StreamAssistant\ai-computer",
+            capture_output=True, text=True, timeout=60
+        )
+        try:
+            return jsonify(json.loads(result.stdout.strip()))
+        except (ValueError, AttributeError):
+            return jsonify({
+                "status": "error",
+                "message": "apply_ordinal_matches.py did not return valid JSON",
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip()
+            }), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "apply_ordinal_matches.py timed out"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
 
 
 @app.route("/car_card/lookup", methods=["GET"])
