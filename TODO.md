@@ -479,9 +479,34 @@ if it's already `CONNECTING` (a native retry in flight), leave it alone;
 only force a fresh `EventSource` if it's genuinely stuck `OPEN` (silently
 not receiving pings, the original stuck-connection case this watchdog was
 built for) or `CLOSED`. Applied identically to both `index.html` and
-`car_card.html`. Not yet re-confirmed live against a real controller.py
-restart with this fix in place - that's the next real test, not another
-manual-refresh smoke test.
+`car_card.html`.
+
+**Confirmed live the same night, immediately after deploying the fix
+above:** watched `/car_card`'s network log through an actual controller.py
+restart. The old connection got `ERR_CONNECTION_RESET` (expected - the
+process died), then exactly **one** new `/car_card/stream` request
+succeeded immediately - no `ERR_ABORTED`/`ERR_CONNECTION_TIMED_OUT`
+alternation, `readyState` back to `OPEN` and receiving pings within ~200ms.
+The abort-loop is gone.
+
+**A second, unrelated bug turned up during that same test:** firing
+`/car_card/test` right after the clean reconnect updated `lastOrdinal`
+(event received) but the card never visually appeared. Cause:
+`datetime.now().isoformat()` (used for every overlay/car-card event's
+`timestamp`, in both `controller.py` and `sheets_writer.py`) produces a
+**naive** local-time string with no UTC offset. Both pages' `new
+Date(event.timestamp)` parse that ambiguously as the *viewing browser's*
+local timezone, not the server's - so `ageMs` in the `MAX_AGE_MS` freshness
+check can be wrong by however many hours the two clocks' timezones differ,
+silently treating a brand-new event as stale (`lastOrdinal` still updates,
+since that check has no age gate, but `showCard()`/`showAlert()` never
+fires). Didn't show up earlier because the Gaming PC and AI Computer are
+presumably on the same timezone; only surfaced testing from a browser
+sandboxed in a different one. Fixed by switching all four call sites to
+`datetime.now(timezone.utc).isoformat()`, so parsing is unambiguous
+regardless of either machine's local clock/timezone setting - closes a
+latent gap (DST edge cases, future clock drift) even though it likely
+wasn't the cause of any manual-refresh incident reported so far.
 
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through

@@ -15,7 +15,7 @@ import time
 import logging
 import subprocess
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, send_file, Response
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
@@ -506,7 +506,7 @@ def car_card_test():
         "races":     request.args.get("races", "7"),
         "wins":      request.args.get("wins", "2"),
         "win_rate":  request.args.get("win_rate", "0.2857"),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     try:
         os.makedirs(OVERLAY_FOLDER, exist_ok=True)
@@ -541,7 +541,7 @@ def overlay_test():
         "class":         request.args.get("class", "S1"),
         "time":          request.args.get("time", "2:14.902"),
         "previous_time": request.args.get("previous_time", "2:16.310"),
-        "timestamp":     datetime.now().isoformat()
+        "timestamp":     datetime.now(timezone.utc).isoformat()
     }
     try:
         os.makedirs(OVERLAY_FOLDER, exist_ok=True)

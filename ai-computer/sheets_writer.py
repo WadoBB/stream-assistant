@@ -9,7 +9,7 @@ import os
 import re
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -297,7 +297,7 @@ class SheetsWriter:
             "class":         race_result.get("class"),
             "time":          race_result.get("best_lap") or race_result.get("race_time"),
             "previous_time": _format_seconds(prior_sec),
-            "timestamp":     datetime.now().isoformat()
+            "timestamp":     datetime.now(timezone.utc).isoformat()
         }
         tmp_path = OVERLAY_STATE_FILE + ".tmp"
         try:
@@ -462,7 +462,7 @@ class SheetsWriter:
             "races":     row["races"]    if row else "",
             "wins":      row["wins"]     if row else "",
             "win_rate":  row["win_rate"] if row else "",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         self._write_car_card_state(card)
 
