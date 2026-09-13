@@ -143,24 +143,46 @@
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
   }
 
-  const source = new EventSource('/car_card/stream');
-  source.onmessage = (msg) => {
-    let event;
-    try {
-      event = JSON.parse(msg.data);
-    } catch (e) {
-      return;   // heartbeat lines never reach here, but be defensive
-    }
+  // Watchdog - see index.html's copy of this comment for the full story.
+  // A long-lived EventSource can go quiet without the browser reliably
+  // reconnecting on its own; lastActivityAt tracks every real event and
+  // every "ping" (named server heartbeat), and a stall forces a fresh
+  // connection instead of waiting on a manual Browser Source refresh.
+  const WATCHDOG_MS = 8000;
+  let lastActivityAt = Date.now();
+  let source = null;
 
-    if (event && event.ordinal && event.ordinal !== lastOrdinal) {
-      const ageMs = Date.now() - new Date(event.timestamp).getTime();
-      lastOrdinal = event.ordinal;
-      if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
-        showCard(event);
+  function connect() {
+    if (source) source.close();
+    source = new EventSource('/car_card/stream');
+    lastActivityAt = Date.now();
+
+    source.addEventListener('ping', () => { lastActivityAt = Date.now(); });
+
+    source.onmessage = (msg) => {
+      lastActivityAt = Date.now();
+      let event;
+      try {
+        event = JSON.parse(msg.data);
+      } catch (e) {
+        return;
       }
-    }
-  };
-  source.onerror = () => {};   // EventSource reconnects on its own
+
+      if (event && event.ordinal && event.ordinal !== lastOrdinal) {
+        const ageMs = Date.now() - new Date(event.timestamp).getTime();
+        lastOrdinal = event.ordinal;
+        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+          showCard(event);
+        }
+      }
+    };
+    source.onerror = () => {};
+  }
+
+  connect();
+  setInterval(() => {
+    if (Date.now() - lastActivityAt > WATCHDOG_MS) connect();
+  }, 3000);
 </script>
 
 </body>

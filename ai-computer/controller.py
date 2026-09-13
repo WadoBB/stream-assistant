@@ -104,9 +104,21 @@ def _sse_stream(state_file_path):
                         data = f.read()
                     yield f"data: {data}\n\n"
                 else:
-                    yield ": heartbeat\n\n"   # keeps the connection alive, ignored by EventSource
+                    # A NAMED event, not a bare SSE comment - visible to the
+                    # client via addEventListener('ping', ...), not just
+                    # invisible keep-alive noise. This exists so the page can
+                    # tell "connection is fine, just quiet" apart from
+                    # "connection silently died" and self-heal (see
+                    # index.html/car_card.html's watchdog) instead of only
+                    # recovering when a human manually refreshes the Browser
+                    # Source - which is what happened in practice: the
+                    # server-side push was proven correct even while this was
+                    # a plain invisible comment, but a long-lived connection
+                    # could still end up in a stuck state the browser's own
+                    # EventSource reconnection didn't reliably catch.
+                    yield "event: ping\ndata: {}\n\n"
             else:
-                yield ": heartbeat\n\n"
+                yield "event: ping\ndata: {}\n\n"
         except GeneratorExit:
             raise
         except Exception as e:

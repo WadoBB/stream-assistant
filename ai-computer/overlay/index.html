@@ -105,26 +105,50 @@
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
   }
 
-  const source = new EventSource('/overlay/stream');
-  source.onmessage = (msg) => {
-    let event;
-    try {
-      event = JSON.parse(msg.data);
-    } catch (e) {
-      return;   // heartbeat lines never reach here (no "data:" payload), but be defensive
-    }
+  // Watchdog: a long-lived EventSource connection was observed going quiet
+  // without the browser's own reconnection logic reliably catching it - the
+  // server-side push was confirmed working even then, so the connection
+  // itself was stuck, not the data. lastActivityAt is updated on every real
+  // event AND every "ping" (a named server heartbeat, sent every ~1s - see
+  // controller.py's _sse_stream()); if too long passes with neither, force a
+  // fresh connection instead of waiting on a manual Browser Source refresh.
+  const WATCHDOG_MS = 8000;
+  let lastActivityAt = Date.now();
+  let source = null;
 
-    if (event && event.race_id && event.race_id !== lastRaceId) {
-      const ageMs = Date.now() - new Date(event.timestamp).getTime();
-      lastRaceId = event.race_id;   // mark seen regardless of age
-      if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
-        showAlert(event);
+  function connect() {
+    if (source) source.close();
+    source = new EventSource('/overlay/stream');
+    lastActivityAt = Date.now();
+
+    source.addEventListener('ping', () => { lastActivityAt = Date.now(); });
+
+    source.onmessage = (msg) => {
+      lastActivityAt = Date.now();
+      let event;
+      try {
+        event = JSON.parse(msg.data);
+      } catch (e) {
+        return;
       }
-    }
-  };
-  // onerror fires on a dropped connection; EventSource reconnects on its own,
-  // nothing to do here except avoid an uncaught-error console spam.
-  source.onerror = () => {};
+
+      if (event && event.race_id && event.race_id !== lastRaceId) {
+        const ageMs = Date.now() - new Date(event.timestamp).getTime();
+        lastRaceId = event.race_id;   // mark seen regardless of age
+        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+          showAlert(event);
+        }
+      }
+    };
+    // onerror fires on a dropped connection; EventSource reconnects on its
+    // own in most cases, and the watchdog below catches the rest.
+    source.onerror = () => {};
+  }
+
+  connect();
+  setInterval(() => {
+    if (Date.now() - lastActivityAt > WATCHDOG_MS) connect();
+  }, 3000);
 </script>
 
 </body>

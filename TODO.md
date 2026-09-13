@@ -386,9 +386,37 @@ default, and a single open SSE connection would otherwise block `/toggle`,
 `/status`, and every other route for as long as a Browser Source stays
 connected (which is indefinitely).
 
-**Not yet confirmed live** - this needs a real OBS session, ideally a long
-one, to verify the "goes quiet after a while" symptom is actually gone and
-not just less frequent.
+**2026-09-12, same night - the underlying push mechanism was confirmed
+correct, but a real gap surfaced anyway.** Both overlays went quiet again on
+both a plain browser tab and OBS, "fixed" only by a manual page refresh. A
+direct raw connection to `/overlay/stream` (opened, then `/overlay/test`
+fired while it was already connected) proved the server-side push itself
+works correctly - the new event arrived live, no refresh involved. So the
+gap wasn't the data delivery; it was that **a long-lived `EventSource`
+connection can end up stuck without the browser's own reconnection logic
+reliably noticing and recovering** - a refresh always "worked" because a
+fresh connection immediately receives whatever's currently in the state
+file, which masked the real problem rather than proving the live-push path
+was healthy.
+
+**Second fix, same session:** heartbeats were originally sent as bare SSE
+comments (`: heartbeat`), deliberately invisible to `EventSource.onmessage`
+by design - which also meant the page had no way to distinguish "connection
+fine, just quiet" from "connection silently dead." Heartbeats are now a
+named `ping` event the page actually listens for
+(`addEventListener('ping', ...)`), and both pages track the timestamp of
+the last real event *or* ping; a client-side watchdog (`setInterval`, every
+3s, checked against an 8s threshold) force-closes and reopens the
+`EventSource` if too long passes with neither. This is a second timer, but
+its job is only "notice a stall and reconnect," not "be the sole delivery
+mechanism" the way the original polling loop was - even if browser
+throttling delays the watchdog itself, it still eventually recovers the
+connection rather than never doing so until a human intervenes.
+
+**Still not confirmed against a real, long OBS session** - this needs
+observation over an actual multi-hour stream to know whether the watchdog
+actually eliminates manual-refresh dependency or just makes recovery
+faster/quieter.
 
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through

@@ -147,6 +147,19 @@ the cached Best by Track+Class time for that (Track, Class). Added
 - `ai-computer/overlay/index.html` flashes a 7-second animation on a new
   `race_id` and ignores events older than 60 seconds so a Browser Source
   reload mid-stream doesn't replay a stale record.
+- **Client-side watchdog** (added same day, after the SSE switch above still
+  needed a manual refresh sometimes): a long-lived `EventSource` connection
+  can go stuck without the browser's own reconnection logic reliably
+  catching it — confirmed by directly connecting to `/overlay/stream` and
+  firing a test mid-connection, which proved the server push itself was
+  correct even when the browser page wasn't reacting. `_sse_stream()`'s
+  heartbeat is a named `ping` event (not an invisible SSE comment) so the
+  page can tell "quiet but fine" from "dead"; both pages track the time of
+  the last real event or ping and force-reconnect if none arrives within 8
+  seconds (checked every 3s). This is a second timer, but its only job is
+  noticing a stall and reconnecting — not the primary delivery path the way
+  polling was — so even throttled it still eventually recovers instead of
+  requiring a human to refresh the Browser Source.
 - Plays `ai-computer/overlay/cheer.mp3` (served at `/overlay/cheer.mp3`) the
   moment the alert flashes in. OBS Browser Sources generally allow audio
   autoplay without a prior user gesture (this is how every existing
@@ -207,7 +220,9 @@ Cars tab first — see TODO.md).
   originally polled `/car_card/state` too, and hit the identical
   works-then-silently-stops-until-Browser-Source-is-recreated failure mode.
   `/car_card/state` (plain JSON, one-shot) is kept for manual/curl
-  verification.
+  verification. Has the same client-side watchdog as the record alert (see
+  above) for the same reason — SSE alone still needed a manual refresh
+  sometimes.
 - **Open wrinkle, not urgent:** `car_ordinal` identifies the car model, not
   the tune — a car built for both Road and Dirt is two different Cars-tab
   rows. Telemetry's live PI resolves Class the same way race results already
