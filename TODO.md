@@ -268,6 +268,27 @@ solve this properly.
 **FH6-only for now** - the Gist is FH6 specific; FH5 would need its own
 separate ordinal source if this is ever extended there.
 
+**2026-09-12 additions, after the two Cars-tab columns were added:**
+- **Engine-rev sound** on car change, same pattern as the record alert's
+  cheer sound - `overlay/rev.mp3` served at `/car_card/rev.mp3`, played via
+  `.play().catch(() => {})` in `car_card.html`. Needs the actual audio file
+  from the user, same as `cheer.mp3` before.
+- **Bulk Ordinal sync**, `sheets_writer.py`'s `sync_ordinals_from_seed()` +
+  standalone `sync_ordinals.py` (triggerable locally or remotely via
+  `controller.py`'s `/car_card/sync_ordinals?game=FH5|FH6`, run as a
+  subprocess so controller.py itself stays free of the Google API
+  dependency). Complements the per-race lazy backfill in
+  `learn_car_ordinal()`: catches every Cars-tab row up to what's already
+  been learned in one pass, rather than needing each car re-raced
+  individually. **Will report 0 backfilled right now** - all 671 seeded
+  entries start with `car_name: null`, so there's nothing to match against
+  yet until some cars have actually been raced since the Ordinal column was
+  added. Worth running periodically as more cars get raced.
+- **Card position still needs live tuning** - current CSS puts it at
+  `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
+  OBS yet. Iterate the same way the record alert's position was confirmed:
+  fire `/car_card/test`, look at the OBS preview, adjust the CSS, repeat.
+
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through
 `telemetry_listener.py` to fire on any change, not just at race start.

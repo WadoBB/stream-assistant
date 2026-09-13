@@ -19,7 +19,10 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, send_file
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
-                     CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE)
+                     CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
+                     CAR_CARD_SOUND_FILE)
+
+SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -215,6 +218,49 @@ def car_card_image(ordinal):
     if os.path.exists(CAR_CARD_DEFAULT_IMAGE):
         return send_file(CAR_CARD_DEFAULT_IMAGE)
     return jsonify({"status": "error", "message": "No image and no default configured"}), 404
+
+
+@app.route("/car_card/rev.mp3", methods=["GET"])
+def car_card_sound():
+    """Serves the engine-rev sound clip car_card.html plays on a car change."""
+    if not os.path.exists(CAR_CARD_SOUND_FILE):
+        return jsonify({"status": "error", "message": "No sound file configured"}), 404
+    return send_file(CAR_CARD_SOUND_FILE)
+
+
+@app.route("/car_card/sync_ordinals", methods=["GET"])
+def sync_ordinals():
+    """
+    Bulk-backfills the Cars tab's Ordinal column from everything already
+    learned in car_ordinals.json, instead of waiting for each car to be
+    raced again individually to trigger the per-race lazy backfill. Runs as
+    a subprocess (not imported directly into this process) so controller.py
+    itself stays free of the Google API dependency - same reasoning as why
+    /toggle launches main.py as a subprocess rather than importing it.
+    ?game=FH5|FH6 selects which spreadsheet (default FH6).
+    """
+    game = request.args.get("game", "FH6").upper()
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+    try:
+        result = subprocess.run(
+            [PYTHON_EXE, SYNC_ORDINALS_SCRIPT, game],
+            cwd=r"C:\StreamAssistant\ai-computer",
+            capture_output=True, text=True, timeout=60
+        )
+        try:
+            return jsonify(json.loads(result.stdout.strip()))
+        except (ValueError, AttributeError):
+            return jsonify({
+                "status": "error",
+                "message": "sync_ordinals.py did not return valid JSON",
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip()
+            }), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "sync_ordinals.py timed out"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/car_card/test", methods=["GET"])

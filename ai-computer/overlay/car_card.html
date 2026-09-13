@@ -86,6 +86,8 @@
   </div>
 </div>
 
+<audio id="rev-sound" src="/car_card/rev.mp3" preload="auto"></audio>
+
 <script>
   // Same polling pattern as index.html (the record alert), separate state
   // file and endpoint. Car changes can happen in quick succession while
@@ -129,6 +131,10 @@
     }
 
     document.getElementById('cc-image').src = `/car_card/image/${event.ordinal}`;
+
+    const rev = document.getElementById('rev-sound');
+    rev.currentTime = 0;
+    rev.play().catch(() => {});   // same autoplay-block tolerance as the record alert
 
     const el = document.getElementById('car-card');
     el.classList.add('show');

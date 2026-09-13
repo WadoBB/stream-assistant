@@ -529,6 +529,71 @@ class SheetsWriter:
         except HttpError as e:
             log.error(f"Failed to backfill Ordinal for {car_name}: {e}")
 
+    def sync_ordinals_from_seed(self):
+        """
+        Bulk version of learn_car_ordinal()'s backfill step: for every entry
+        in the local seed file that already has a learned car_name, finds
+        the matching Cars tab row(s) and backfills Ordinal wherever it's
+        still blank - without waiting for each car to be raced again
+        individually. An ordinal identifies the car MODEL, not a specific
+        tune, so if a car has multiple rows (different Class/Type builds),
+        all of them get backfilled with the same ordinal - unlike
+        learn_car_ordinal(), which only touches the one row matching that
+        specific race's live class. Returns a summary dict; meant to be
+        called from sync_ordinals.py, not the live pipeline.
+        """
+        if not self._car_ordinals_loaded:
+            self._load_car_ordinals()
+        if not self._car_card_loaded:
+            self._load_car_card_cache()
+
+        if "Ordinal" not in self._cars_hmap:
+            return {"status": "error", "message": "Cars tab has no 'Ordinal' column yet"}
+
+        col_letter = _column_letter(self._cars_hmap["Ordinal"])
+        updates, backfilled = [], []
+        skipped_no_match = 0
+        skipped_already_set = 0
+
+        for ordinal_str, entry in self._car_ordinals.items():
+            car_name = entry.get("car_name")
+            if not car_name:
+                continue
+            candidates = self._cars_by_name.get(_normalize_str(car_name), [])
+            if not candidates:
+                skipped_no_match += 1
+                continue
+            for row in candidates:
+                if row.get("ordinal"):
+                    skipped_already_set += 1
+                    continue
+                updates.append({
+                    "range":  f"{CARS_TAB}!{col_letter}{row['row_number']}",
+                    "values": [[ordinal_str]]
+                })
+                row["ordinal"] = ordinal_str
+                self._cars_by_ordinal[ordinal_str] = row
+                backfilled.append({"car_name": car_name, "row": row["row_number"]})
+
+        if not updates:
+            return {"status": "ok", "backfilled": 0,
+                    "skipped_no_match": skipped_no_match,
+                    "skipped_already_set": skipped_already_set}
+
+        try:
+            self.service.spreadsheets().values().batchUpdate(
+                spreadsheetId=self.spreadsheet_id,
+                body={"valueInputOption": "RAW", "data": updates}
+            ).execute()
+        except HttpError as e:
+            log.error(f"Failed to bulk-backfill Ordinal column: {e}")
+            return {"status": "error", "message": str(e)}
+
+        log.info(f"Bulk-backfilled Ordinal for {len(backfilled)} Cars tab row(s)")
+        return {"status": "ok", "backfilled": len(backfilled), "rows": backfilled,
+                "skipped_no_match": skipped_no_match,
+                "skipped_already_set": skipped_already_set}
+
     def update_car_stats(self):
         """
         Tally races and wins per (Car Name, Class, Type) from the full Results

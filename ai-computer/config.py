@@ -44,6 +44,7 @@ CAR_CARD_HTML           = r"C:\StreamAssistant\ai-computer\overlay\car_card.html
 CAR_CARD_STATE_FILE     = r"C:\StreamAssistant\ai-computer\overlay\car_card_state.json"
 CAR_IMAGES_FOLDER       = r"C:\StreamAssistant\ai-computer\overlay\car_images"
 CAR_CARD_DEFAULT_IMAGE  = r"C:\StreamAssistant\ai-computer\overlay\car_images\default_shadow.svg"
+CAR_CARD_SOUND_FILE     = r"C:\StreamAssistant\ai-computer\overlay\rev.mp3"
 
 # Local seed/learned database mapping Forza's internal car_ordinal to a car's
 # full name (Year+MFG+Model, from a community FH6 ordinal list, seeded once -
