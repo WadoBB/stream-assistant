@@ -368,6 +368,48 @@ separate ordinal source if this is ever extended there.
       race, just arriving via reasoning instead of racing. Re-checks the
       row/ordinal are still unset at write time, so a stale match list from
       an earlier export can't clobber anything.
+      - **2026-09-13 fix:** the Sheet write and the JSON write shared one
+        "already done" check, keyed off the Sheet's Ordinal being set. Found
+        the hard way: after applying 216 matches, an unrelated git incident
+        on the AI Computer (`git merge --abort` reverting to a stale commit,
+        then `git reset --hard origin/main` to recover - see below) wiped
+        the uncommitted `car_ordinals.json` changes, but the Sheet writes
+        survived untouched (Sheets aren't git-tracked). Re-running the same
+        match list to repair just the JSON side skipped every single row,
+        because the Sheet already had Ordinal set - the shared skip
+        condition never let execution reach the JSON backfill at all. Also,
+        `_save_car_ordinals()` was only called inside the "Sheet needed
+        writing" branch, so even a successful in-memory JSON backfill with
+        nothing left to write to the Sheet would never actually persist to
+        disk. Fixed by giving the two writes independent skip conditions
+        and gating the save on whether the JSON was actually backfilled,
+        not on whether the Sheet was.
+    - **2026-09-13 - unrelated git incident during the same session, while
+      trying to commit `car_ordinals.json` from the AI Computer:** its local
+      `main` was still sitting on 2 unpushed commits from well before this
+      project's current two-machine workflow existed
+      (track-name-capture and scoreboard-time-preference fixes - both
+      already reflected in current `main`'s behavior per this doc), miles
+      behind origin's 55 newer commits. An earlier, unattended `git pull`
+      hit a conflict in `gaming-pc/capture_agent.py` and was left
+      unresolved, which blocked every subsequent git command
+      ("could not write index") until diagnosed as a stuck merge and
+      cleared with `git merge --abort` - which itself reset the working
+      tree all the way back to that old pre-merge commit, wiping
+      `car_ordinals.json` (a file that didn't exist yet at that old commit)
+      along with the uncommitted 216-match backfill. Recovered cleanly with
+      `git fetch origin && git reset --hard origin/main` (safe here since
+      nothing on GitHub was ever at risk - only the AI Computer's local,
+      never-pushed state), then re-ran the same match list through the
+      now-fixed `apply_ordinal_matches.py` to redo just the JSON side (the
+      Sheet was never affected, since it isn't git-tracked at all).
+      **Takeaway for next time a machine's `main` is this far behind:**
+      check `git log --oneline -5` for stray local-only commits *before*
+      attempting a plain `git pull` on a heavily diverged branch - a clean
+      `git fetch && git reset --hard origin/main` (after confirming any
+      local-only commits are already reflected upstream) avoids the merge
+      entirely when there's no real local work worth preserving as distinct
+      commits.
 - **Card position still needs live tuning** - current CSS puts it at
   `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
   OBS yet. Iterate the same way the record alert's position was confirmed:

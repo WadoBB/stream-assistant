@@ -55,6 +55,7 @@ def main():
     updates, applied = [], []
     skipped_already_set = 0
     skipped_invalid = 0
+    json_backfilled = 0
 
     for m in matches:
         row_number = m.get("row_number")
@@ -65,29 +66,39 @@ def main():
             continue
         ordinal_str = str(ordinal)
 
+        # The Sheet write and the car_ordinals.json write are independently
+        # idempotent - each must be skipped only by its own "already done"
+        # check, not by the other's. Sharing one skip condition meant that
+        # after the Sheet write alone survived a git incident (Sheets aren't
+        # git-tracked, so it wasn't rolled back) but car_ordinals.json was,
+        # re-running this endpoint to repair the JSON side skipped
+        # everything because the Sheet already had Ordinal set - the JSON
+        # backfill never got a chance to run at all.
         row = writer._cars_by_ordinal.get(ordinal_str)
-        already_set = row is not None
-        if not already_set:
+        sheet_already_set = row is not None
+        if not sheet_already_set:
             for candidates in writer._cars_by_name.values():
                 for r in candidates:
                     if r["row_number"] == row_number and r.get("ordinal"):
-                        already_set = True
+                        sheet_already_set = True
                         break
-        if already_set:
-            skipped_already_set += 1
-            continue
 
-        updates.append({
-            "range":  f"{CARS_TAB}!{col_letter}{row_number}",
-            "values": [[ordinal_str]]
-        })
-        applied.append({"row_number": row_number, "ordinal": ordinal_str, "car_name": car_name})
+        if sheet_already_set:
+            skipped_already_set += 1
+        else:
+            updates.append({
+                "range":  f"{CARS_TAB}!{col_letter}{row_number}",
+                "values": [[ordinal_str]]
+            })
+            applied.append({"row_number": row_number, "ordinal": ordinal_str, "car_name": car_name})
 
         entry = writer._car_ordinals.get(ordinal_str)
         if entry is None:
             writer._car_ordinals[ordinal_str] = {"full_name": None, "car_name": car_name}
+            json_backfilled += 1
         elif not entry.get("car_name") and car_name:
             entry["car_name"] = car_name
+            json_backfilled += 1
 
     if updates:
         try:
@@ -98,12 +109,17 @@ def main():
         except HttpError as e:
             print(json.dumps({"status": "error", "message": f"Failed to write Ordinal column: {e}"}))
             sys.exit(1)
+
+    # Gated on json_backfilled, not on `updates` - the JSON write is
+    # independent of whether the Sheet needed writing at all (see above).
+    if json_backfilled:
         writer._save_car_ordinals()
 
     print(json.dumps({
         "status": "ok",
         "applied": len(applied),
         "rows": applied,
+        "json_backfilled": json_backfilled,
         "skipped_already_set": skipped_already_set,
         "skipped_invalid": skipped_invalid
     }))
