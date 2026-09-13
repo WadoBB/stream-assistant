@@ -171,6 +171,33 @@ Be careful — a previous attempt to tighten banner detection broke normal captu
 
 ## Planned
 
+### Overlay Sounds Need Their Own OBS Mixer Channel — flagged 2026-09-13
+`cheer.mp3` (record alert) and `rev.mp3` (car card) currently play through
+whichever OBS audio track/mixer channel their Browser Sources default to -
+apparently Mic/Aux, since the user reports they come through far louder
+than intended, mixed in with mic volume rather than independently
+controllable.
+
+The user's existing StreamElements overlay sounds don't have this problem -
+they're routed to a separate, dedicated mixer channel named "SE Clean Race
+Overlay" with its own independently-lowered volume, via a Browser Source
+pointed at:
+`https://streamelements.com/overlay/6a08a62516fc5074b2affac6/8_mW-X-aHaBHO__qPEy_ScBVB8MIvJ-bZUiQ3ft7aq_zCKm-`
+
+**Likely mostly an OBS-configuration task, not a code change:** OBS assigns
+each audio-producing source (including a Browser Source) to one of its 6
+audio tracks via that source's "Advanced Audio Properties" (right-click the
+source, or the gear icon in the Audio Mixer panel) - this determines which
+mixer strip it shows up under and lets its volume be controlled
+independently of Mic/Aux. First thing to try: check what track/mixer
+assignment the StreamElements Browser Source uses vs. what the Record
+Alert and Car Card Browser Sources use, and either match them to the same
+channel or assign them a new dedicated one - entirely in OBS's UI, no
+changes to `index.html`/`car_card.html`/`controller.py` needed unless that
+turns out not to be sufficient (e.g. if something about how the `<audio>`
+tag plays inside a Browser Source bypasses per-source track assignment,
+which would need investigating live in OBS rather than guessed at here).
+
 ### Car Suggester — scoped 2026-09-12, needs a dedicated session
 Suggests which car(s) to pick, before you commit, for whatever track/class
 is coming up next — a companion to the record-alert overlay but for the
