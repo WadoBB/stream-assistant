@@ -317,10 +317,28 @@ separate ordinal source if this is ever extended there.
   dependency). Complements the per-race lazy backfill in
   `learn_car_ordinal()`: catches every Cars-tab row up to what's already
   been learned in one pass, rather than needing each car re-raced
-  individually. **Will report 0 backfilled right now** - all 671 seeded
-  entries start with `car_name: null`, so there's nothing to match against
-  yet until some cars have actually been raced since the Ordinal column was
-  added. Worth running periodically as more cars get raced.
+  individually.
+  - **2026-09-12 update:** originally only matched by learned `car_name`
+    (scoreboard's abbreviated name), which meant every one of the 671 seeded
+    entries reported 0 backfilled until that specific car had actually been
+    raced - going to take weeks, and manually cross-referencing the
+    ordinal-ordered seed file against the spreadsheet by hand (to type
+    Ordinal in directly) was slow, since scanning by ordinal number doesn't
+    match how you'd look a car up by name. Added a second matching path,
+    `_build_identity_index()`: builds "{Year} {MFG} {Model}" from the Cars
+    tab's own columns and compares the whole normalized string against the
+    seed's `full_name` directly, deliberately without trying to split
+    `full_name` itself (manufacturer names are often multi-word - Alfa
+    Romeo, Aston Martin, Land Rover... - so that split is ambiguous without
+    a hardcoded MFG list). This matches any car you've already catalogued
+    with Year/MFG/Model filled in, even if never raced, at the cost of only
+    matching when the wording lines up exactly (no fuzzy matching - a
+    mismatch just falls through as unmatched rather than risking the wrong
+    car getting an ordinal). Each backfilled row's summary now includes
+    `matched_by: "car_name"` or `"identity"` so it's clear which path found
+    it. Also fixed two wrong seed entries found this way: ordinal 249 was
+    listed as "1964 Ferrari 250 GTO" (should be 1962), ordinal 255 as "1991
+    Ferrari 512 TR" (should be 1992).
 - **Card position still needs live tuning** - current CSS puts it at
   `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
   OBS yet. Iterate the same way the record alert's position was confirmed:

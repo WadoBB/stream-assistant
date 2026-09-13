@@ -529,18 +529,60 @@ class SheetsWriter:
         except HttpError as e:
             log.error(f"Failed to backfill Ordinal for {car_name}: {e}")
 
+    def _build_identity_index(self):
+        """
+        Maps normalized "{Year} {MFG} {Model}" -> Cars tab row(s), for the
+        identity-based half of sync_ordinals_from_seed(). Built from
+        self._cars_by_name (already loaded by _load_car_card_cache()), so it
+        covers every Cars tab row regardless of whether Ordinal or car_name
+        is set yet.
+
+        Deliberately does NOT try to split the seed file's full_name (e.g.
+        "1962 Ferrari 250 GTO") into Year/MFG/Model - manufacturer names are
+        often multiple words (Alfa Romeo, Aston Martin, Land Rover,
+        Mercedes-Benz...) so that split is ambiguous without a hardcoded
+        manufacturer list. Instead this builds the same "{Year} {MFG}
+        {Model}" string from the Cars tab's own separate columns and compares
+        the whole normalized string against full_name directly - sidesteps
+        the split entirely, at the cost of only matching entries where the
+        wording lines up exactly (a deliberate tradeoff: no fuzzy matching,
+        so a mismatch just falls through as unmatched rather than risking a
+        wrong car getting an ordinal).
+        """
+        index = defaultdict(list)
+        for candidates in self._cars_by_name.values():
+            for row in candidates:
+                if row["year"] and row["mfg"] and row["model"]:
+                    key = _normalize_str(f"{row['year']} {row['mfg']} {row['model']}")
+                    index[key].append(row)
+        return index
+
     def sync_ordinals_from_seed(self):
         """
-        Bulk version of learn_car_ordinal()'s backfill step: for every entry
-        in the local seed file that already has a learned car_name, finds
-        the matching Cars tab row(s) and backfills Ordinal wherever it's
-        still blank - without waiting for each car to be raced again
-        individually. An ordinal identifies the car MODEL, not a specific
-        tune, so if a car has multiple rows (different Class/Type builds),
-        all of them get backfilled with the same ordinal - unlike
-        learn_car_ordinal(), which only touches the one row matching that
-        specific race's live class. Returns a summary dict; meant to be
-        called from sync_ordinals.py, not the live pipeline.
+        Bulk-backfills the Cars tab's Ordinal column from the local seed
+        file, without waiting for each car to be raced again individually.
+        Tries two matching strategies per seed entry, in order:
+
+        1. By learned car_name (same as learn_car_ordinal()'s backfill step)
+           - only available once that car has actually been raced at least
+           once, since car_name is the scoreboard's abbreviated name and
+           nothing else in the pipeline produces it.
+        2. By identity ("{Year} {MFG} {Model}", via _build_identity_index())
+           - works for cars never raced yet, as long as the user has already
+           manually entered that car's Year/MFG/Model on its Cars tab row.
+           This is the path that makes manually typing Ordinal numbers
+           unnecessary for a car you haven't raced but have catalogued -
+           added 2026-09-12 because waiting on every car to be raced first
+           was going to take weeks, and manually cross-referencing an
+           ordinal-ordered seed file against the spreadsheet by hand was
+           slow and error-prone in the other direction.
+
+        An ordinal identifies the car MODEL, not a specific tune, so if a
+        car has multiple rows (different Class/Type builds), all of them get
+        backfilled with the same ordinal - unlike learn_car_ordinal(), which
+        only touches the one row matching that specific race's live class.
+        Returns a summary dict; meant to be called from sync_ordinals.py,
+        not the live pipeline.
         """
         if not self._car_ordinals_loaded:
             self._load_car_ordinals()
@@ -550,6 +592,8 @@ class SheetsWriter:
         if "Ordinal" not in self._cars_hmap:
             return {"status": "error", "message": "Cars tab has no 'Ordinal' column yet"}
 
+        identity_index = self._build_identity_index()
+
         col_letter = _column_letter(self._cars_hmap["Ordinal"])
         updates, backfilled = [], []
         skipped_no_match = 0
@@ -557,9 +601,19 @@ class SheetsWriter:
 
         for ordinal_str, entry in self._car_ordinals.items():
             car_name = entry.get("car_name")
-            if not car_name:
-                continue
-            candidates = self._cars_by_name.get(_normalize_str(car_name), [])
+            full_name = entry.get("full_name")
+
+            matched_by = None
+            candidates = []
+            if car_name:
+                candidates = self._cars_by_name.get(_normalize_str(car_name), [])
+                if candidates:
+                    matched_by = "car_name"
+            if not candidates and full_name:
+                candidates = identity_index.get(_normalize_str(full_name), [])
+                if candidates:
+                    matched_by = "identity"
+
             if not candidates:
                 skipped_no_match += 1
                 continue
@@ -573,7 +627,8 @@ class SheetsWriter:
                 })
                 row["ordinal"] = ordinal_str
                 self._cars_by_ordinal[ordinal_str] = row
-                backfilled.append({"car_name": car_name, "row": row["row_number"]})
+                backfilled.append({"car_name": row["car_name"], "row": row["row_number"],
+                                    "matched_by": matched_by})
 
         if not updates:
             return {"status": "ok", "backfilled": 0,
