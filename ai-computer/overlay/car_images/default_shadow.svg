@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#0d1220"/>
+  <g fill="#3a4260">
+    <path d="M30 130 L45 95 Q55 82 75 80 L125 80 Q145 82 155 95 L170 130
+             Q172 145 158 148 L150 148 Q150 158 138 158 Q126 158 126 148
+             L74 148 Q74 158 62 158 Q50 158 50 148 L42 148 Q28 145 30 130 Z"/>
+    <circle cx="62" cy="150" r="14" fill="#171d30"/>
+    <circle cx="138" cy="150" r="14" fill="#171d30"/>
+  </g>
+  <text x="100" y="185" font-family="Segoe UI, Arial, sans-serif" font-size="12"
+        fill="#4a5578" text-anchor="middle">No image yet</text>
+</svg>

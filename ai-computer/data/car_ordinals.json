@@ -1,0 +1,2686 @@
+{
+  "1006": {
+    "car_name": null,
+    "full_name": "2005 Ferrari FXX"
+  },
+  "1007": {
+    "car_name": null,
+    "full_name": "2008 Koenigsegg CCGT"
+  },
+  "1009": {
+    "car_name": null,
+    "full_name": "2008 Mitsubishi Lancer Evolution X GSR"
+  },
+  "1011": {
+    "car_name": null,
+    "full_name": "2008 BMW M3 E92"
+  },
+  "1020": {
+    "car_name": null,
+    "full_name": "1996 Ferrari F50 GT"
+  },
+  "1022": {
+    "car_name": null,
+    "full_name": "2007 Ferrari F430 Scuderia"
+  },
+  "1023": {
+    "car_name": null,
+    "full_name": "1998 Ferrari F40 Competizione"
+  },
+  "1032": {
+    "car_name": null,
+    "full_name": "2008 Alfa Romeo 8C Competizione"
+  },
+  "1034": {
+    "car_name": null,
+    "full_name": "1994 Toyota Celica ST205"
+  },
+  "1040": {
+    "car_name": null,
+    "full_name": "1981 BMW M1"
+  },
+  "1041": {
+    "car_name": null,
+    "full_name": "1993 Ford Mustang SVT Cobra R"
+  },
+  "1042": {
+    "car_name": null,
+    "full_name": "1971 Nissan Skyline 2000 GT-R"
+  },
+  "1045": {
+    "car_name": null,
+    "full_name": "1987 Pontiac Trans Am GTA"
+  },
+  "1046": {
+    "car_name": null,
+    "full_name": "2008 Dodge Viper SRT-10 ACR"
+  },
+  "1052": {
+    "car_name": null,
+    "full_name": "2006 Dodge Ram SRT-10"
+  },
+  "1059": {
+    "car_name": null,
+    "full_name": "2008 BMW Z4 M Coupe"
+  },
+  "1060": {
+    "car_name": null,
+    "full_name": "2008 Subaru Impreza WRX STi"
+  },
+  "1063": {
+    "car_name": null,
+    "full_name": "1969 Dodge Charger Daytona"
+  },
+  "1064": {
+    "car_name": null,
+    "full_name": "1979 Chevrolet Camaro Z/28"
+  },
+  "1069": {
+    "car_name": null,
+    "full_name": "2009 Chevrolet Corvette ZR1"
+  },
+  "1086": {
+    "car_name": null,
+    "full_name": "2009 Ford Focus RS"
+  },
+  "1090": {
+    "car_name": null,
+    "full_name": "2009 Mercedes-Benz SL 65 AMG"
+  },
+  "1093": {
+    "car_name": null,
+    "full_name": "1960 Chevrolet Corvette"
+  },
+  "1103": {
+    "car_name": null,
+    "full_name": "2010 Nissan 370Z"
+  },
+  "1104": {
+    "car_name": null,
+    "full_name": "1970 Nissan 510"
+  },
+  "1105": {
+    "car_name": null,
+    "full_name": "1964 Aston Martin DB5 Vantage"
+  },
+  "1108": {
+    "car_name": null,
+    "full_name": "1987 Ford RS200 Evolution"
+  },
+  "1110": {
+    "car_name": null,
+    "full_name": "1994 Mazda MX-5 Miata"
+  },
+  "1124": {
+    "car_name": null,
+    "full_name": "1980 Fiat 131 Abarth Stradale"
+  },
+  "1126": {
+    "car_name": null,
+    "full_name": "2009 BMW M5"
+  },
+  "1130": {
+    "car_name": null,
+    "full_name": "2011 McLaren MP4-12C"
+  },
+  "1131": {
+    "car_name": null,
+    "full_name": "2010 Ferrari 458 Italia"
+  },
+  "1150": {
+    "car_name": null,
+    "full_name": "1965 Alfa Romeo Giulia GTA"
+  },
+  "1155": {
+    "car_name": null,
+    "full_name": "1965 Shelby Cobra Daytona"
+  },
+  "1171": {
+    "car_name": null,
+    "full_name": "2010 Ferrari 599XX"
+  },
+  "1173": {
+    "car_name": null,
+    "full_name": "2010 Lamborghini Gallardo LP670-4 SV"
+  },
+  "1175": {
+    "car_name": null,
+    "full_name": "2010 Pagani Zonda R"
+  },
+  "1184": {
+    "car_name": null,
+    "full_name": "2009 Audi RS6"
+  },
+  "1200": {
+    "car_name": null,
+    "full_name": "2009 Audi R8 LMS"
+  },
+  "1204": {
+    "car_name": null,
+    "full_name": "2010 Renault Megane RS250"
+  },
+  "1215": {
+    "car_name": null,
+    "full_name": "NUL_CAR_00"
+  },
+  "1216": {
+    "car_name": null,
+    "full_name": "2011 Audi RS3"
+  },
+  "1220": {
+    "car_name": null,
+    "full_name": "2010 Audi TT RS"
+  },
+  "1221": {
+    "car_name": null,
+    "full_name": "2010 Mazdaspeed 3"
+  },
+  "1229": {
+    "car_name": null,
+    "full_name": "2008 Mazda Furai"
+  },
+  "1231": {
+    "car_name": null,
+    "full_name": "2010 Volkswagen Golf R"
+  },
+  "1253": {
+    "car_name": null,
+    "full_name": "2010 Noble M600"
+  },
+  "1260": {
+    "car_name": null,
+    "full_name": "2010 Lexus LFA"
+  },
+  "1269": {
+    "car_name": null,
+    "full_name": "1973 BMW 2002 Turbo"
+  },
+  "1270": {
+    "car_name": null,
+    "full_name": "1982 DeLorean DMC-12"
+  },
+  "1272": {
+    "car_name": null,
+    "full_name": "1992 Ford Escort RS Cosworth"
+  },
+  "1273": {
+    "car_name": null,
+    "full_name": "1997 Honda Civic Type R"
+  },
+  "1276": {
+    "car_name": null,
+    "full_name": "1977 Pontiac Firebird Trans Am"
+  },
+  "1277": {
+    "car_name": null,
+    "full_name": "1971 Plymouth 'Cuda 426"
+  },
+  "1278": {
+    "car_name": null,
+    "full_name": "1973 Ford XB Falcon GT"
+  },
+  "1282": {
+    "car_name": null,
+    "full_name": "1994 Nissan 240SX"
+  },
+  "1283": {
+    "car_name": null,
+    "full_name": "1957 Ford Thunderbird"
+  },
+  "1291": {
+    "car_name": null,
+    "full_name": "1970 Chevrolet El Camino SS"
+  },
+  "1293": {
+    "car_name": null,
+    "full_name": "1987 Ford Sierra RS500"
+  },
+  "1294": {
+    "car_name": null,
+    "full_name": "1992 GMC Syclone"
+  },
+  "1295": {
+    "car_name": null,
+    "full_name": "1982 Lancia 037 Stradale"
+  },
+  "1296": {
+    "car_name": null,
+    "full_name": "1990 Mercedes-Benz 190E"
+  },
+  "1297": {
+    "car_name": null,
+    "full_name": "1988 Mitsubishi Starion ESI-R"
+  },
+  "1299": {
+    "car_name": null,
+    "full_name": "1983 Volvo 242 Turbo"
+  },
+  "1300": {
+    "car_name": null,
+    "full_name": "1964 Chevrolet Impala SS"
+  },
+  "1301": {
+    "car_name": null,
+    "full_name": "1956 Jaguar D-Type"
+  },
+  "1314": {
+    "car_name": null,
+    "full_name": "1993 McLaren F1"
+  },
+  "1323": {
+    "car_name": null,
+    "full_name": "2011 Subaru Impreza WRX STi"
+  },
+  "1330": {
+    "car_name": null,
+    "full_name": "1970 Chevrolet Camaro Z/28"
+  },
+  "1332": {
+    "car_name": null,
+    "full_name": "1968 Dodge Dart"
+  },
+  "1335": {
+    "car_name": null,
+    "full_name": "1991 Mazda #55 Mazda 787B"
+  },
+  "1350": {
+    "car_name": null,
+    "full_name": "2011 BMW X5 M"
+  },
+  "1352": {
+    "car_name": null,
+    "full_name": "1970 Dodge Super Bee"
+  },
+  "1355": {
+    "car_name": null,
+    "full_name": "1965 Ford Mustang"
+  },
+  "1367": {
+    "car_name": null,
+    "full_name": "2003 BMW M5 E39"
+  },
+  "1368": {
+    "car_name": null,
+    "full_name": "1988 BMW M5 E28"
+  },
+  "1369": {
+    "car_name": null,
+    "full_name": "2009 Pagani Zonda Cinque"
+  },
+  "1376": {
+    "car_name": null,
+    "full_name": "1999 Lotus Elise"
+  },
+  "1379": {
+    "car_name": null,
+    "full_name": "1996 Chevrolet Impala SS"
+  },
+  "1381": {
+    "car_name": null,
+    "full_name": "1992 Mitsubishi Galant VR-4"
+  },
+  "1382": {
+    "car_name": null,
+    "full_name": "1990 Subaru Legacy RS"
+  },
+  "1388": {
+    "car_name": null,
+    "full_name": "2012 BMW M5"
+  },
+  "1392": {
+    "car_name": null,
+    "full_name": "2011 Lamborghini Sesto Elemento"
+  },
+  "1393": {
+    "car_name": null,
+    "full_name": "1992 Alfa Romeo 155"
+  },
+  "1394": {
+    "car_name": null,
+    "full_name": "1993 GMC Typhoon"
+  },
+  "1395": {
+    "car_name": null,
+    "full_name": "1989 Toyota MR2 SC"
+  },
+  "1397": {
+    "car_name": null,
+    "full_name": "2011 Koenigsegg Agera"
+  },
+  "1398": {
+    "car_name": null,
+    "full_name": "2012 Lamborghini Aventador LP700-4"
+  },
+  "1417": {
+    "car_name": null,
+    "full_name": "2011 Audi RS5"
+  },
+  "1418": {
+    "car_name": null,
+    "full_name": "1995 BMW M5"
+  },
+  "1426": {
+    "car_name": null,
+    "full_name": "2011 Mazda RX-8 R3"
+  },
+  "1428": {
+    "car_name": null,
+    "full_name": "2011 Volkswagen Scirocco R"
+  },
+  "1429": {
+    "car_name": null,
+    "full_name": "1969 Chevrolet Nova SS"
+  },
+  "1435": {
+    "car_name": null,
+    "full_name": "1966 Volkswagen Beetle"
+  },
+  "1459": {
+    "car_name": null,
+    "full_name": "1957 Chevrolet Bel Air"
+  },
+  "1477": {
+    "car_name": null,
+    "full_name": "2011 Ford Transit SSV"
+  },
+  "1478": {
+    "car_name": null,
+    "full_name": "1986 Audi Sport Quattro S2"
+  },
+  "1480": {
+    "car_name": null,
+    "full_name": "1985 Mazda RX-7"
+  },
+  "1481": {
+    "car_name": null,
+    "full_name": "1965 Austin-Healey 3000"
+  },
+  "1493": {
+    "car_name": null,
+    "full_name": "1996 BMW 850CSi"
+  },
+  "1500": {
+    "car_name": null,
+    "full_name": "2012 Mercedes-Benz C63 AMG"
+  },
+  "1513": {
+    "car_name": null,
+    "full_name": "1997 Maserati Ghibli"
+  },
+  "1514": {
+    "car_name": null,
+    "full_name": "1973 Mazda RX-3"
+  },
+  "1517": {
+    "car_name": null,
+    "full_name": "1990 Toyota Celica ST185"
+  },
+  "1522": {
+    "car_name": null,
+    "full_name": "2012 Jeep Wrangler"
+  },
+  "1529": {
+    "car_name": null,
+    "full_name": "1974 Ford Capri"
+  },
+  "1532": {
+    "car_name": null,
+    "full_name": "2012 Hennessey Venom GT"
+  },
+  "1533": {
+    "car_name": null,
+    "full_name": "1977 Holden Torana"
+  },
+  "1534": {
+    "car_name": null,
+    "full_name": "1990 Jaguar XJ-S"
+  },
+  "1537": {
+    "car_name": null,
+    "full_name": "1973 Toyota Corolla SR5"
+  },
+  "1549": {
+    "car_name": null,
+    "full_name": "1968 Alfa Romeo 33 Stradale"
+  },
+  "1559": {
+    "car_name": null,
+    "full_name": "1955 Mercedes-Benz 300 SLR"
+  },
+  "1562": {
+    "car_name": null,
+    "full_name": "2013 Viper GTS"
+  },
+  "1564": {
+    "car_name": null,
+    "full_name": "1953 Chevrolet Corvette"
+  },
+  "1568": {
+    "car_name": null,
+    "full_name": "1974 Honda Civic RS"
+  },
+  "1575": {
+    "car_name": null,
+    "full_name": "1988 Chevrolet Monte Carlo"
+  },
+  "1578": {
+    "car_name": null,
+    "full_name": "1963 Ferrari 250 GT Lusso"
+  },
+  "1586": {
+    "car_name": null,
+    "full_name": "1962 Lincoln Continental"
+  },
+  "1587": {
+    "car_name": null,
+    "full_name": "1972 Mazda Cosmo"
+  },
+  "1591": {
+    "car_name": null,
+    "full_name": "1984 Peugeot 205 T16"
+  },
+  "1592": {
+    "car_name": null,
+    "full_name": "1974 Toyota Celica GT"
+  },
+  "1598": {
+    "car_name": null,
+    "full_name": "2010 BMW M3 GTS"
+  },
+  "1599": {
+    "car_name": null,
+    "full_name": "2012 Ferrari 599XX Evolution"
+  },
+  "1601": {
+    "car_name": null,
+    "full_name": "2012 Lamborghini Gallardo LP570-4 Spyder Performante"
+  },
+  "1607": {
+    "car_name": null,
+    "full_name": "2013 Audi RS4 Avant"
+  },
+  "1627": {
+    "car_name": null,
+    "full_name": "2013 Mercedes-Benz G65 AMG"
+  },
+  "1650": {
+    "car_name": null,
+    "full_name": "1986 Honda Civic Si"
+  },
+  "1651": {
+    "car_name": null,
+    "full_name": "2013 Ariel Atom"
+  },
+  "1654": {
+    "car_name": null,
+    "full_name": "2013 Ford Mustang GT500"
+  },
+  "1655": {
+    "car_name": null,
+    "full_name": "2013 Subaru BRZ"
+  },
+  "1658": {
+    "car_name": null,
+    "full_name": "2013 Mercedes-Benz A45 AMG"
+  },
+  "1661": {
+    "car_name": null,
+    "full_name": "1986 Lancia Delta S4"
+  },
+  "1662": {
+    "car_name": null,
+    "full_name": "1965 Mini Cooper S"
+  },
+  "1667": {
+    "car_name": null,
+    "full_name": "2013 McLaren P1"
+  },
+  "1668": {
+    "car_name": null,
+    "full_name": "1969 Ford Mustang Boss 302"
+  },
+  "2002": {
+    "car_name": null,
+    "full_name": "2012 Nissan GT-R"
+  },
+  "2003": {
+    "car_name": null,
+    "full_name": "2013 MINI JCW GP"
+  },
+  "2004": {
+    "car_name": null,
+    "full_name": "2013 Mazda MX-5"
+  },
+  "2006": {
+    "car_name": null,
+    "full_name": "1995 Chevrolet Corvette ZR-1"
+  },
+  "2007": {
+    "car_name": null,
+    "full_name": "2013 Toyota GT86"
+  },
+  "2009": {
+    "car_name": null,
+    "full_name": "2013 Audi RS7"
+  },
+  "2010": {
+    "car_name": null,
+    "full_name": "2013 Audi R8 Plus"
+  },
+  "2017": {
+    "car_name": null,
+    "full_name": "1968 Fiat 595 SS"
+  },
+  "2019": {
+    "car_name": null,
+    "full_name": "2003 Ford Focus RS"
+  },
+  "2034": {
+    "car_name": null,
+    "full_name": "2013 Ferrari LaFerrari"
+  },
+  "2038": {
+    "car_name": null,
+    "full_name": "2014 Alfa Romeo 4C"
+  },
+  "2040": {
+    "car_name": null,
+    "full_name": "2014 BAC Mono"
+  },
+  "2042": {
+    "car_name": null,
+    "full_name": "2013 Lamborghini Veneno"
+  },
+  "2119": {
+    "car_name": null,
+    "full_name": "1984 Honda CRX Mugen"
+  },
+  "2121": {
+    "car_name": null,
+    "full_name": "1994 Honda Prelude"
+  },
+  "2128": {
+    "car_name": null,
+    "full_name": "2013 Cadillac XTS Limo"
+  },
+  "2131": {
+    "car_name": null,
+    "full_name": "2014 Holden HSV GTS"
+  },
+  "2133": {
+    "car_name": null,
+    "full_name": "2015 BMW i8"
+  },
+  "2140": {
+    "car_name": null,
+    "full_name": "1981 Subaru BRAT"
+  },
+  "2142": {
+    "car_name": null,
+    "full_name": "2014 Volkswagen Golf R"
+  },
+  "2145": {
+    "car_name": null,
+    "full_name": "2014 Ford Ranger T6 Rally Raid"
+  },
+  "2147": {
+    "car_name": null,
+    "full_name": "1986 MG Metro 6R4"
+  },
+  "2148": {
+    "car_name": null,
+    "full_name": "2013 Mini X-Raid All4 Racing Countryman"
+  },
+  "2149": {
+    "car_name": null,
+    "full_name": "1993 Renault Clio Williams"
+  },
+  "2151": {
+    "car_name": null,
+    "full_name": "1963 Volkswagen Type 2"
+  },
+  "2154": {
+    "car_name": null,
+    "full_name": "2014 BMW M4"
+  },
+  "2161": {
+    "car_name": null,
+    "full_name": "1965 Alfa Romeo Giulia TZ2"
+  },
+  "2163": {
+    "car_name": null,
+    "full_name": "2015 Honda Civic Type R"
+  },
+  "2164": {
+    "car_name": null,
+    "full_name": "2015 Lamborghini Huracan"
+  },
+  "2168": {
+    "car_name": null,
+    "full_name": "2015 Subaru WRX STi"
+  },
+  "2171": {
+    "car_name": null,
+    "full_name": "2005 Mazda MX-5"
+  },
+  "2175": {
+    "car_name": null,
+    "full_name": "2015 Lexus RC F"
+  },
+  "2177": {
+    "car_name": null,
+    "full_name": "2015 Chevrolet Corvette Z06"
+  },
+  "2178": {
+    "car_name": null,
+    "full_name": "2001 Audi RS4"
+  },
+  "2179": {
+    "car_name": null,
+    "full_name": "2015 Audi S1"
+  },
+  "2180": {
+    "car_name": null,
+    "full_name": "2015 Audi RS6"
+  },
+  "2183": {
+    "car_name": null,
+    "full_name": "2015 Chevrolet Camaro Z/28"
+  },
+  "2184": {
+    "car_name": null,
+    "full_name": "2015 Ferrari 458 Speciale"
+  },
+  "2188": {
+    "car_name": null,
+    "full_name": "2015 Koenigsegg One:1"
+  },
+  "2205": {
+    "car_name": null,
+    "full_name": "1970 Honda S800"
+  },
+  "2216": {
+    "car_name": null,
+    "full_name": "1958 Plymouth Fury"
+  },
+  "2217": {
+    "car_name": null,
+    "full_name": "1996 Subaru SVX"
+  },
+  "2235": {
+    "car_name": null,
+    "full_name": "2015 Jaguar XKR-S GT"
+  },
+  "2242": {
+    "car_name": null,
+    "full_name": "2015 Mercedes-AMG GT"
+  },
+  "2262": {
+    "car_name": null,
+    "full_name": "2016 Cadillac ATS-V"
+  },
+  "2263": {
+    "car_name": null,
+    "full_name": "2015 Dodge Challenger Hellcat"
+  },
+  "2267": {
+    "car_name": null,
+    "full_name": "2016 Mazda MX-5"
+  },
+  "2270": {
+    "car_name": null,
+    "full_name": "1973 Nissan Skyline GT-R"
+  },
+  "2272": {
+    "car_name": null,
+    "full_name": "1969 Datsun 2000"
+  },
+  "2290": {
+    "car_name": null,
+    "full_name": "2014 Porsche 918 Spyder"
+  },
+  "2297": {
+    "car_name": null,
+    "full_name": "2012 Porsche 911 GT3 RS"
+  },
+  "2357": {
+    "car_name": null,
+    "full_name": "2017 Ford Focus RS"
+  },
+  "2363": {
+    "car_name": null,
+    "full_name": "2016 Ford Phoenix"
+  },
+  "2371": {
+    "car_name": null,
+    "full_name": "2016 Ferrari FXX K"
+  },
+  "2372": {
+    "car_name": null,
+    "full_name": "1932 Ford Coupe"
+  },
+  "2400": {
+    "car_name": null,
+    "full_name": "2016 Ford Shelby GT350R"
+  },
+  "2412": {
+    "car_name": null,
+    "full_name": "1962 BMW Isetta"
+  },
+  "2416": {
+    "car_name": null,
+    "full_name": "1971 Meyers Manx"
+  },
+  "2420": {
+    "car_name": null,
+    "full_name": "1984 Opel Manta 400"
+  },
+  "2421": {
+    "car_name": null,
+    "full_name": "2016 Cadillac CTS-V Sedan"
+  },
+  "2422": {
+    "car_name": null,
+    "full_name": "2016 Holden HSV GTS Maloo"
+  },
+  "2430": {
+    "car_name": null,
+    "full_name": "2016 Ariel Nomad"
+  },
+  "2467": {
+    "car_name": null,
+    "full_name": "2016 Ferrari 488 GTB"
+  },
+  "2468": {
+    "car_name": null,
+    "full_name": "2015 Dodge Charger SRT Hellcat"
+  },
+  "2469": {
+    "car_name": null,
+    "full_name": "1965 Toyota Sports 800"
+  },
+  "247": {
+    "car_name": null,
+    "full_name": "1969 Toyota 2000 GT"
+  },
+  "2470": {
+    "car_name": null,
+    "full_name": "2016 Aston Martin Vulcan"
+  },
+  "2471": {
+    "car_name": null,
+    "full_name": "2016 Mercedes-Benz C63 AMG Coupe"
+  },
+  "2472": {
+    "car_name": null,
+    "full_name": "2016 McLaren 570S"
+  },
+  "2473": {
+    "car_name": null,
+    "full_name": "2016 Audi R8 V10 Plus"
+  },
+  "2486": {
+    "car_name": null,
+    "full_name": "2015 Radical RXC Turbo"
+  },
+  "2489": {
+    "car_name": null,
+    "full_name": "2016 Fiat 695 Abarth"
+  },
+  "249": {
+    "car_name": null,
+    "full_name": "1964 Ferrari 250 GTO"
+  },
+  "2494": {
+    "car_name": null,
+    "full_name": "2015 Land Rover Range Rover SVR"
+  },
+  "2507": {
+    "car_name": null,
+    "full_name": "1955 Chevrolet 150 Utility Sedan"
+  },
+  "251": {
+    "car_name": null,
+    "full_name": "1954 Mercedes-Benz 300 SL"
+  },
+  "2512": {
+    "car_name": null,
+    "full_name": "1987 Nissan Skyline GTS-R"
+  },
+  "2515": {
+    "car_name": null,
+    "full_name": "2011 Penhall The Cholla"
+  },
+  "2517": {
+    "car_name": null,
+    "full_name": "2014 Ford F-150 Trophy Truck"
+  },
+  "2526": {
+    "car_name": null,
+    "full_name": "2016 Koenigsegg Regera"
+  },
+  "2527": {
+    "car_name": null,
+    "full_name": "2017 Aston Martin DB11"
+  },
+  "253": {
+    "car_name": null,
+    "full_name": "1994 Ferrari F355 Berlinetta"
+  },
+  "2534": {
+    "car_name": null,
+    "full_name": "1993 Porsche 968 Turbo S"
+  },
+  "2535": {
+    "car_name": null,
+    "full_name": "1993 Porsche 928 GTS"
+  },
+  "2542": {
+    "car_name": null,
+    "full_name": "2016 Alfa Romeo Giulia"
+  },
+  "2544": {
+    "car_name": null,
+    "full_name": "2016 Dodge Viper ACR"
+  },
+  "2549": {
+    "car_name": null,
+    "full_name": "1970 Porsche #3 917 LH"
+  },
+  "255": {
+    "car_name": null,
+    "full_name": "1991 Ferrari 512 TR"
+  },
+  "2551": {
+    "car_name": null,
+    "full_name": "2015 Ford Pursuit Ute"
+  },
+  "2552": {
+    "car_name": null,
+    "full_name": "2015 Alumicraft Class 10 Race Car"
+  },
+  "2563": {
+    "car_name": null,
+    "full_name": "1972 Reliant Supervan III"
+  },
+  "2566": {
+    "car_name": null,
+    "full_name": "1975 Toyota FJ40"
+  },
+  "2568": {
+    "car_name": null,
+    "full_name": "1969 Volkswagen Class 5/1600 Baja Bug"
+  },
+  "2569": {
+    "car_name": null,
+    "full_name": "2015 Ultima Evolution Coupe"
+  },
+  "2574": {
+    "car_name": null,
+    "full_name": "2554 AMG Transport Dynamics M12 Warthog FAV"
+  },
+  "2577": {
+    "car_name": null,
+    "full_name": "2015 Ferrari F12tdf"
+  },
+  "260": {
+    "car_name": null,
+    "full_name": "1973 Porsche 911 Carrera RS"
+  },
+  "261": {
+    "car_name": null,
+    "full_name": "1995 Porsche 911 GT2"
+  },
+  "2613": {
+    "car_name": null,
+    "full_name": "1970 GMC Jimmy"
+  },
+  "2614": {
+    "car_name": null,
+    "full_name": "1968 Ford Mustang GT390"
+  },
+  "2616": {
+    "car_name": null,
+    "full_name": "2017 Lamborghini Urus Bellissima"
+  },
+  "2618": {
+    "car_name": null,
+    "full_name": "2017 Nissan GT-R"
+  },
+  "262": {
+    "car_name": null,
+    "full_name": "2004 Porsche 911 GT3"
+  },
+  "2625": {
+    "car_name": null,
+    "full_name": "2016 Bentley Bentayga"
+  },
+  "2628": {
+    "car_name": null,
+    "full_name": "2016 BMW M4 GTS"
+  },
+  "2636": {
+    "car_name": null,
+    "full_name": "1993 Toyota #1 T100 Baja Truck"
+  },
+  "2647": {
+    "car_name": null,
+    "full_name": "2016 Pagani Huayra"
+  },
+  "2649": {
+    "car_name": null,
+    "full_name": "2010 Ford Crown Victoria"
+  },
+  "265": {
+    "car_name": null,
+    "full_name": "1982 Porsche 911 Turbo"
+  },
+  "2652": {
+    "car_name": null,
+    "full_name": "1997 Mitsubishi Pajero Evolution"
+  },
+  "2654": {
+    "car_name": null,
+    "full_name": "2017 Mercedes-AMG GT R"
+  },
+  "2659": {
+    "car_name": null,
+    "full_name": "1998 Nissan Silvia K's"
+  },
+  "2663": {
+    "car_name": null,
+    "full_name": "2016 RJ Anderson #37 Polaris RZR Pro 2 Truck"
+  },
+  "268": {
+    "car_name": null,
+    "full_name": "1989 Porsche 944 Turbo"
+  },
+  "269": {
+    "car_name": null,
+    "full_name": "1987 Porsche 959"
+  },
+  "2711": {
+    "car_name": null,
+    "full_name": "2010 Mazdaspeed 3 (Traffic)"
+  },
+  "2712": {
+    "car_name": null,
+    "full_name": "1992 Mitsubishi Galant VR-4 (Traffic)"
+  },
+  "2713": {
+    "car_name": null,
+    "full_name": "2014 Box Truck (Traffic)"
+  },
+  "2714": {
+    "car_name": null,
+    "full_name": "2014 Bus (Traffic)"
+  },
+  "2738": {
+    "car_name": null,
+    "full_name": "1995 Nissan GT-R LM"
+  },
+  "2739": {
+    "car_name": null,
+    "full_name": "2017 Chevrolet Camaro ZL1"
+  },
+  "2740": {
+    "car_name": null,
+    "full_name": "2017 Abarth 124 Spider"
+  },
+  "2742": {
+    "car_name": null,
+    "full_name": "2017 Jeep Trailcat"
+  },
+  "2743": {
+    "car_name": null,
+    "full_name": "2016 Toyota Land Cruiser Arctic"
+  },
+  "2745": {
+    "car_name": null,
+    "full_name": "2015 Honda Ridgeline Baja Trophy Truck"
+  },
+  "2755": {
+    "car_name": null,
+    "full_name": "2018 Porsche 911 GT2 RS"
+  },
+  "2773": {
+    "car_name": null,
+    "full_name": "2018 Porsche Cayenne"
+  },
+  "278": {
+    "car_name": null,
+    "full_name": "2006 Vauxhall Astra VXR"
+  },
+  "2792": {
+    "car_name": null,
+    "full_name": "1966 Ford GT40"
+  },
+  "2793": {
+    "car_name": null,
+    "full_name": "1967 Ferrari 330 P4"
+  },
+  "2794": {
+    "car_name": null,
+    "full_name": "1993 Porsche 911 Turbo S"
+  },
+  "2801": {
+    "car_name": null,
+    "full_name": "1983 Nissan #11 Tomica Skylien Turbo Super Silhouette"
+  },
+  "281": {
+    "car_name": null,
+    "full_name": "1968 Plymouth Barracuda"
+  },
+  "2822": {
+    "car_name": null,
+    "full_name": "1985 Nissan Safari"
+  },
+  "2825": {
+    "car_name": null,
+    "full_name": "1971 Lotus Elise GT1"
+  },
+  "2841": {
+    "car_name": null,
+    "full_name": "2018 Jeep Grand Cherokee Trackhawk"
+  },
+  "2866": {
+    "car_name": null,
+    "full_name": "2018 Exomotive Exocet Sport V8 XP-5"
+  },
+  "2870": {
+    "car_name": null,
+    "full_name": "2018 Honda Civic Type R"
+  },
+  "2871": {
+    "car_name": null,
+    "full_name": "2018 Can-Am Maverick"
+  },
+  "2872": {
+    "car_name": null,
+    "full_name": "2019 Hyundai Veloster N"
+  },
+  "289": {
+    "car_name": null,
+    "full_name": "1969 Chevrolet Camaro SS"
+  },
+  "2902": {
+    "car_name": null,
+    "full_name": "2018 Flatbed Truck (Traffic)"
+  },
+  "2903": {
+    "car_name": null,
+    "full_name": "2005 Subaru Legacy B4 GT (Traffic)"
+  },
+  "2909": {
+    "car_name": null,
+    "full_name": "2018 Dodge Challenger SRT Demon"
+  },
+  "2910": {
+    "car_name": null,
+    "full_name": "2017 Koenigsegg Agera RS"
+  },
+  "292": {
+    "car_name": null,
+    "full_name": "2003 Porsche Carrera GT"
+  },
+  "2935": {
+    "car_name": null,
+    "full_name": "2018 Funco F9"
+  },
+  "2937": {
+    "car_name": null,
+    "full_name": "2017 Ford Fiesta GRC"
+  },
+  "295": {
+    "car_name": null,
+    "full_name": "2003 Toyota Celica SS-I"
+  },
+  "296": {
+    "car_name": null,
+    "full_name": "1998 TVR Cerbera"
+  },
+  "2968": {
+    "car_name": null,
+    "full_name": "2023 Aston Martin Valkyrie"
+  },
+  "2974": {
+    "car_name": null,
+    "full_name": "2018 Ferrari 812 Superfast"
+  },
+  "2986": {
+    "car_name": null,
+    "full_name": "2017 Mercedes-Benz Unimog"
+  },
+  "2987": {
+    "car_name": null,
+    "full_name": "1962 Peel P50"
+  },
+  "299": {
+    "car_name": null,
+    "full_name": "1970 Chevrolet Chevelle"
+  },
+  "2992": {
+    "car_name": null,
+    "full_name": "1964 Jaguar E-Type Lightweight"
+  },
+  "2993": {
+    "car_name": null,
+    "full_name": "2018 TVR Griffith"
+  },
+  "2995": {
+    "car_name": null,
+    "full_name": "1983 Volkswagen Golf GTI"
+  },
+  "2996": {
+    "car_name": null,
+    "full_name": "2015 Formula Drift #13 Ford Mustang"
+  },
+  "2997": {
+    "car_name": null,
+    "full_name": "2016 Formula Drift #530 HSV Maloo Gen-F"
+  },
+  "3000": {
+    "car_name": null,
+    "full_name": "1997 Formula Drift #777 Nissan 240SX"
+  },
+  "3003": {
+    "car_name": null,
+    "full_name": "2006 Formula Drift #43 Dodge Viper SRT10"
+  },
+  "3007": {
+    "car_name": null,
+    "full_name": "2017 Volkswagen Beetle GRC"
+  },
+  "302": {
+    "car_name": null,
+    "full_name": "2004 Honda Civic Type R"
+  },
+  "3031": {
+    "car_name": null,
+    "full_name": "1985 Porsche #185 959 Prodrive Rally Raid"
+  },
+  "3035": {
+    "car_name": null,
+    "full_name": "2018 KTM X-Bow GT4"
+  },
+  "3037": {
+    "car_name": null,
+    "full_name": "1989 Formula Drift #98 BMW 325I"
+  },
+  "3051": {
+    "car_name": null,
+    "full_name": "2017 Ford Fiesta M-Sport"
+  },
+  "3055": {
+    "car_name": null,
+    "full_name": "2010 Jaguar C-X75"
+  },
+  "306": {
+    "car_name": null,
+    "full_name": "1965 Shelby Cobra 427"
+  },
+  "3062": {
+    "car_name": null,
+    "full_name": "1970 Ferrari 512 S"
+  },
+  "3063": {
+    "car_name": null,
+    "full_name": "2018 Mercedes-Benz X-Class"
+  },
+  "3064": {
+    "car_name": null,
+    "full_name": "2018 Mercedes-AMG GT4"
+  },
+  "3072": {
+    "car_name": null,
+    "full_name": "2019 Porsche 911 GT3 RS"
+  },
+  "3082": {
+    "car_name": null,
+    "full_name": "2006 Maserati MC12 Corsa"
+  },
+  "3087": {
+    "car_name": null,
+    "full_name": "2014 McLaren 650S Spider"
+  },
+  "3088": {
+    "car_name": null,
+    "full_name": "2018 Chevrolet Deberti Drift Truck"
+  },
+  "309": {
+    "car_name": null,
+    "full_name": "1995 Volkswagen Corrado"
+  },
+  "3091": {
+    "car_name": null,
+    "full_name": "2018 Aston Martin Vantage"
+  },
+  "3107": {
+    "car_name": null,
+    "full_name": "2014 Mercedes-Benz G63 AMG 6x6"
+  },
+  "3108": {
+    "car_name": null,
+    "full_name": "2018 Ford Mustang RTR Spec 5"
+  },
+  "3110": {
+    "car_name": null,
+    "full_name": "2013 Deberti Wrangler Unlimited"
+  },
+  "3117": {
+    "car_name": null,
+    "full_name": "2018 Porsche 718 Cayman GTS"
+  },
+  "3118": {
+    "car_name": null,
+    "full_name": "2019 Chevrolet Corvette ZR1"
+  },
+  "312": {
+    "car_name": null,
+    "full_name": "1967 Chevrolet Corvette Stingray"
+  },
+  "3120": {
+    "car_name": null,
+    "full_name": "2019 Lamborghini Urus"
+  },
+  "3123": {
+    "car_name": null,
+    "full_name": "2019 Porsche 911 (992)"
+  },
+  "3128": {
+    "car_name": null,
+    "full_name": "2017 Ford #25 Brocky Ultra4 Bronco RTR"
+  },
+  "3129": {
+    "car_name": null,
+    "full_name": "2008 Renault Megane R26.R"
+  },
+  "3132": {
+    "car_name": null,
+    "full_name": "2018 Mini X-Raid John Cooper Works Buggy"
+  },
+  "3134": {
+    "car_name": null,
+    "full_name": "2018 Renault Megane RS"
+  },
+  "314": {
+    "car_name": null,
+    "full_name": "2002 Chevrolet Corvette Z06"
+  },
+  "3141": {
+    "car_name": null,
+    "full_name": "2018 Apollo Intensa Emozione"
+  },
+  "3149": {
+    "car_name": null,
+    "full_name": "2018 Chevrolet Camaro 1LE"
+  },
+  "315": {
+    "car_name": null,
+    "full_name": "1970 Chevrolet Corvette ZR1"
+  },
+  "3153": {
+    "car_name": null,
+    "full_name": "2019 McLaren 600LT"
+  },
+  "3156": {
+    "car_name": null,
+    "full_name": "2019 McLaren Speedtail"
+  },
+  "316": {
+    "car_name": null,
+    "full_name": "1988 Lamborghini Countach"
+  },
+  "3170": {
+    "car_name": null,
+    "full_name": "1994 Ford Supervan 3"
+  },
+  "3173": {
+    "car_name": null,
+    "full_name": "2019 BMW Z4"
+  },
+  "3176": {
+    "car_name": null,
+    "full_name": "1987 Mercedes-AMG Hammer"
+  },
+  "3180": {
+    "car_name": null,
+    "full_name": "1991 Peugeot 205 Rallye"
+  },
+  "3184": {
+    "car_name": null,
+    "full_name": "1977 Ford Escort Mk2"
+  },
+  "3185": {
+    "car_name": null,
+    "full_name": "2019 Aston Martin DBS Superleggera"
+  },
+  "3187": {
+    "car_name": null,
+    "full_name": "2018 Porsche Macan RR"
+  },
+  "3189": {
+    "car_name": null,
+    "full_name": "2018 Hennessey VelociRaptor 6x6"
+  },
+  "3190": {
+    "car_name": null,
+    "full_name": "2003 Ford SVT Lightning"
+  },
+  "3198": {
+    "car_name": null,
+    "full_name": "1984 De Tomaso Pantera GT5"
+  },
+  "320": {
+    "car_name": null,
+    "full_name": "1991 Honda CRX Si"
+  },
+  "3211": {
+    "car_name": null,
+    "full_name": "2019 Aston Martin Vulcan AMR Pro"
+  },
+  "3212": {
+    "car_name": null,
+    "full_name": "2019 Zenvo TSR-S"
+  },
+  "3214": {
+    "car_name": null,
+    "full_name": "2019 Porsche #70 Porsche Motorsport 935"
+  },
+  "3225": {
+    "car_name": null,
+    "full_name": "2018 Ferrari Portofino"
+  },
+  "3226": {
+    "car_name": null,
+    "full_name": "2017 Ferrari J50"
+  },
+  "3227": {
+    "car_name": null,
+    "full_name": "2019 Ferrari 488 Pista"
+  },
+  "3228": {
+    "car_name": null,
+    "full_name": "1999 Ford Racing Puma"
+  },
+  "323": {
+    "car_name": null,
+    "full_name": "1992 Lancia Delta"
+  },
+  "3232": {
+    "car_name": null,
+    "full_name": "2013 Formula Drift #777 Chevrolet Corvette"
+  },
+  "3235": {
+    "car_name": null,
+    "full_name": "1982 Volkswagen Caddy"
+  },
+  "324": {
+    "car_name": null,
+    "full_name": "1999 Lamborghini Diablo GTR"
+  },
+  "3241": {
+    "car_name": null,
+    "full_name": "2018 Subaru WRX STI ARX Supercar"
+  },
+  "3249": {
+    "car_name": null,
+    "full_name": "2018 Formula Drift #117 599 GTB Fiorano"
+  },
+  "325": {
+    "car_name": null,
+    "full_name": "1997 Lamborghini Diablo SV"
+  },
+  "3250": {
+    "car_name": null,
+    "full_name": "2018 Mercedes-Benz E63 S AMG"
+  },
+  "3255": {
+    "car_name": null,
+    "full_name": "2020 Jeep Gladiator"
+  },
+  "3257": {
+    "car_name": null,
+    "full_name": "1990 Nissan Pulsar GTI-R"
+  },
+  "326": {
+    "car_name": null,
+    "full_name": "1969 Ferrari Dino 246"
+  },
+  "327": {
+    "car_name": null,
+    "full_name": "1995 Mitsubishi Eclipse GSX"
+  },
+  "3277": {
+    "car_name": null,
+    "full_name": "2020 Ford Mustang GT500"
+  },
+  "3282": {
+    "car_name": null,
+    "full_name": "1987 Porsche #203 Porsche AG 961"
+  },
+  "3287": {
+    "car_name": null,
+    "full_name": "1991 Jaguar XJR-15"
+  },
+  "3288": {
+    "car_name": null,
+    "full_name": "1993 Porsche 962 C RS"
+  },
+  "3289": {
+    "car_name": null,
+    "full_name": "2019 Lamborghini Aventador SVJ"
+  },
+  "3293": {
+    "car_name": null,
+    "full_name": "1993 Jaguar XJ220 S"
+  },
+  "3304": {
+    "car_name": null,
+    "full_name": "1990 Alfa Romeo SE 048SP"
+  },
+  "3307": {
+    "car_name": null,
+    "full_name": "2019 Nissan 370Z Nismo"
+  },
+  "3311": {
+    "car_name": null,
+    "full_name": "2018 Ferrari FXX-K Evo"
+  },
+  "3312": {
+    "car_name": null,
+    "full_name": "2019 Ferrari Monza SP2"
+  },
+  "3315": {
+    "car_name": null,
+    "full_name": "2020 Koenigsegg Jesko"
+  },
+  "3318": {
+    "car_name": null,
+    "full_name": "2018 Audi RS4 Avant"
+  },
+  "3325": {
+    "car_name": null,
+    "full_name": "2003 Aston Martin DB7 GT"
+  },
+  "333": {
+    "car_name": null,
+    "full_name": "2002 Ferrari Enzo"
+  },
+  "335": {
+    "car_name": null,
+    "full_name": "2002 Lotus Esprit V8"
+  },
+  "3359": {
+    "car_name": null,
+    "full_name": "2018 Audi e-tron"
+  },
+  "336": {
+    "car_name": null,
+    "full_name": "1961 Jaguar E-Type"
+  },
+  "3363": {
+    "car_name": null,
+    "full_name": "1998 Nissan #23 Pennzoil Nismo Skyline GT-R"
+  },
+  "3364": {
+    "car_name": null,
+    "full_name": "2019 Aston Martin Valhalla"
+  },
+  "3367": {
+    "car_name": null,
+    "full_name": "2020 Ferrari F8 Tributo"
+  },
+  "3369": {
+    "car_name": null,
+    "full_name": "2020 Chevrolet Corvette"
+  },
+  "3371": {
+    "car_name": null,
+    "full_name": "2020 Lamborghini Huracan EVO"
+  },
+  "3373": {
+    "car_name": null,
+    "full_name": "2019 Toyota 4Runner TRD Pro"
+  },
+  "3374": {
+    "car_name": null,
+    "full_name": "2019 Toyota Tacoma TRD Pro"
+  },
+  "338": {
+    "car_name": null,
+    "full_name": "1997 McLaren F1 GT"
+  },
+  "3395": {
+    "car_name": null,
+    "full_name": "1967 Renault 8 Gordini"
+  },
+  "340": {
+    "car_name": null,
+    "full_name": "1987 Ferrari F40"
+  },
+  "3400": {
+    "car_name": null,
+    "full_name": "2009 Formula Drift #99 Mazda RX-8"
+  },
+  "3402": {
+    "car_name": null,
+    "full_name": "2020 Toyota GR Supra"
+  },
+  "3404": {
+    "car_name": null,
+    "full_name": "2020 Ford Bronco R"
+  },
+  "3411": {
+    "car_name": null,
+    "full_name": "1995 Formula Drift #34 Toyota Supra MKIV"
+  },
+  "3412": {
+    "car_name": null,
+    "full_name": "2019 Subaru WRX STi S209"
+  },
+  "3413": {
+    "car_name": null,
+    "full_name": "2019 Volkswagen Golf R"
+  },
+  "3414": {
+    "car_name": null,
+    "full_name": "2020 Land Rover Defender"
+  },
+  "342": {
+    "car_name": null,
+    "full_name": "1995 Ferrari F50"
+  },
+  "3429": {
+    "car_name": null,
+    "full_name": "2019 Ginetta G40 Junior"
+  },
+  "343": {
+    "car_name": null,
+    "full_name": "1969 Nissan Fairlady 432 Z"
+  },
+  "3434": {
+    "car_name": null,
+    "full_name": "2020 BMW M2 Competition"
+  },
+  "3439": {
+    "car_name": null,
+    "full_name": "2019 Ford F-250 Deberti"
+  },
+  "344": {
+    "car_name": null,
+    "full_name": "2003 Nissan Fairlady Z"
+  },
+  "3441": {
+    "car_name": null,
+    "full_name": "2019 Deberti Toyota Tacoma TRD The Performance Truck"
+  },
+  "3445": {
+    "car_name": null,
+    "full_name": "2020 Porsche Taycan Turbo S"
+  },
+  "3449": {
+    "car_name": null,
+    "full_name": "2020 Lotus Evija"
+  },
+  "345": {
+    "car_name": null,
+    "full_name": "1994 Nissan Fairlady Z Version S Twin Turbo"
+  },
+  "3454": {
+    "car_name": null,
+    "full_name": "2020 Audi RS3 Sedan"
+  },
+  "3476": {
+    "car_name": null,
+    "full_name": "2020 Ford F-450 DRW"
+  },
+  "3477": {
+    "car_name": null,
+    "full_name": "2020 Chevrolet Silverado LTZ 71"
+  },
+  "348": {
+    "car_name": null,
+    "full_name": "2005 Ford GT"
+  },
+  "3482": {
+    "car_name": null,
+    "full_name": "2021 McLaren 765LT"
+  },
+  "3486": {
+    "car_name": null,
+    "full_name": "2012 Jeep Wrangler Rubicon (Traffic)"
+  },
+  "3494": {
+    "car_name": null,
+    "full_name": "1968 Alfa Romeo Autodelta Tipo 33/2 Daytona"
+  },
+  "3498": {
+    "car_name": null,
+    "full_name": "2017 Saleen S7 LM"
+  },
+  "3518": {
+    "car_name": null,
+    "full_name": "2020 BMW M8"
+  },
+  "3520": {
+    "car_name": null,
+    "full_name": "2021 Lexus LC 500"
+  },
+  "3523": {
+    "car_name": null,
+    "full_name": "2020 Formula Drift #151 Toyota GR Supra"
+  },
+  "3524": {
+    "car_name": null,
+    "full_name": "2019 Formula Drift #411 Toyota Corolla Hatchback"
+  },
+  "353": {
+    "car_name": null,
+    "full_name": "1992 Volkswagen Golf GTi 16v Mk2"
+  },
+  "3533": {
+    "car_name": null,
+    "full_name": "2022 Volkswagen Golf R"
+  },
+  "3534": {
+    "car_name": null,
+    "full_name": "2021 MINI JCW GP"
+  },
+  "3539": {
+    "car_name": null,
+    "full_name": "2020 Sierra Cars #23 Yokohama Alpha"
+  },
+  "3540": {
+    "car_name": null,
+    "full_name": "2021 Sierra Cars RX3"
+  },
+  "3543": {
+    "car_name": null,
+    "full_name": "2022 Pagani Huayra R"
+  },
+  "3548": {
+    "car_name": null,
+    "full_name": "2020 Wuling Hongguang S"
+  },
+  "3549": {
+    "car_name": null,
+    "full_name": "2021 Alumicraft #122 Class 1 buggy"
+  },
+  "3551": {
+    "car_name": null,
+    "full_name": "2020 Formula Drift #91 BMW M2"
+  },
+  "3554": {
+    "car_name": null,
+    "full_name": "2005 Mitsubishi #1 Sierra Enterprises Lancer Evolution Time Attack"
+  },
+  "357": {
+    "car_name": null,
+    "full_name": "1997 Mitsubishi GTO"
+  },
+  "358": {
+    "car_name": null,
+    "full_name": "1984 Ferrari GTO"
+  },
+  "3580": {
+    "car_name": null,
+    "full_name": "2019 Aston Martin DBX"
+  },
+  "3583": {
+    "car_name": null,
+    "full_name": "2021 Audi RS6 Avant"
+  },
+  "3584": {
+    "car_name": null,
+    "full_name": "2021 Audi RS7"
+  },
+  "3590": {
+    "car_name": null,
+    "full_name": "1973 Chevrolet C/K Pickup"
+  },
+  "3594": {
+    "car_name": null,
+    "full_name": "2021 Ferrari Roma"
+  },
+  "3595": {
+    "car_name": null,
+    "full_name": "2020 Ferrari SF90 Stradale"
+  },
+  "3597": {
+    "car_name": null,
+    "full_name": "1983 Ford F-150"
+  },
+  "3599": {
+    "car_name": null,
+    "full_name": "2022 Gordon Murray T.50"
+  },
+  "3600": {
+    "car_name": null,
+    "full_name": "2021 Hennessey Venom F5"
+  },
+  "3603": {
+    "car_name": null,
+    "full_name": "2019 Casey Currie Motorsports #4402 Ultra 4 Trophy Jeep"
+  },
+  "3604": {
+    "car_name": null,
+    "full_name": "2020 Jimco #179 Hammerhead Class 1"
+  },
+  "3605": {
+    "car_name": null,
+    "full_name": "2019 Jimco #240 Fastball Racing Spec Trophy Truck"
+  },
+  "3606": {
+    "car_name": null,
+    "full_name": "2020 Lamborghini Essenza SCV12"
+  },
+  "3608": {
+    "car_name": null,
+    "full_name": "2021 Lamborghini Sian Roadster"
+  },
+  "3611": {
+    "car_name": null,
+    "full_name": "2022 Maserati MC20"
+  },
+  "3616": {
+    "car_name": null,
+    "full_name": "2021 Mercedes-AMG GT Black Series"
+  },
+  "3617": {
+    "car_name": null,
+    "full_name": "2022 Mercedes-Benz SL63 AMG"
+  },
+  "3622": {
+    "car_name": null,
+    "full_name": "2019 Nissan GT-R Nismo"
+  },
+  "3624": {
+    "car_name": null,
+    "full_name": "1987 Porsche Carrera Coupe LuftAuto 002"
+  },
+  "3625": {
+    "car_name": null,
+    "full_name": "2021 Rimac Nevera"
+  },
+  "3629": {
+    "car_name": null,
+    "full_name": "2021 Toyota GR Yaris"
+  },
+  "363": {
+    "car_name": null,
+    "full_name": "1998 Subaru Impreza 22B"
+  },
+  "3631": {
+    "car_name": null,
+    "full_name": "2022 Aston Martin Valkyrie AMR Pro"
+  },
+  "364": {
+    "car_name": null,
+    "full_name": "2004 Subaru Impreza WRX STi"
+  },
+  "3645": {
+    "car_name": null,
+    "full_name": "2021 BMW M4"
+  },
+  "365": {
+    "car_name": null,
+    "full_name": "2005 Subaru Impreza WRX STi"
+  },
+  "3650": {
+    "car_name": null,
+    "full_name": "2021 Merceds-AMG One"
+  },
+  "3655": {
+    "car_name": null,
+    "full_name": "2021 McLaren 620R"
+  },
+  "3657": {
+    "car_name": null,
+    "full_name": "2022 Rivian R1T"
+  },
+  "3661": {
+    "car_name": null,
+    "full_name": "2018 Lotus Exige Cup 430"
+  },
+  "3662": {
+    "car_name": null,
+    "full_name": "2021 RJ Anderson #37 Polaris RZR Pro 4 Truck"
+  },
+  "3665": {
+    "car_name": null,
+    "full_name": "2021 Sierra Cars 700R"
+  },
+  "3667": {
+    "car_name": null,
+    "full_name": "2021 Porsche 911 GT3"
+  },
+  "3668": {
+    "car_name": null,
+    "full_name": "2023 McLaren Artura"
+  },
+  "3670": {
+    "car_name": null,
+    "full_name": "2001 Ford Focus WRC"
+  },
+  "3672": {
+    "car_name": null,
+    "full_name": "2021 Lamborghini Huracan STO"
+  },
+  "3678": {
+    "car_name": null,
+    "full_name": "2020 Hyundai i30 N"
+  },
+  "368": {
+    "car_name": null,
+    "full_name": "2001 Acura Integra Type R"
+  },
+  "3686": {
+    "car_name": null,
+    "full_name": "2021 Polaris RZR Pro XP Factory Racing Limited Edition"
+  },
+  "3687": {
+    "car_name": null,
+    "full_name": "2021 Polaris RZR Pro XP Ultimate"
+  },
+  "3692": {
+    "car_name": null,
+    "full_name": "2022 Ford F-150 Lightning"
+  },
+  "3693": {
+    "car_name": null,
+    "full_name": "2022 Alumicraft #6165 Trick truck"
+  },
+  "3698": {
+    "car_name": null,
+    "full_name": "2022 Porsche Mission R"
+  },
+  "3700": {
+    "car_name": null,
+    "full_name": "2021 McLaren Sabre"
+  },
+  "3716": {
+    "car_name": null,
+    "full_name": "2023 Lotus Emira"
+  },
+  "3719": {
+    "car_name": null,
+    "full_name": "2022 Cadillac CT4-V Blackwing"
+  },
+  "3720": {
+    "car_name": null,
+    "full_name": "2022 Cadillac CT5-V Blackwing"
+  },
+  "3722": {
+    "car_name": null,
+    "full_name": "2022 GMC Hummer EV"
+  },
+  "3724": {
+    "car_name": null,
+    "full_name": "2022 Ferrari 296 GTB"
+  },
+  "3726": {
+    "car_name": null,
+    "full_name": "2023 Acura Integra"
+  },
+  "3728": {
+    "car_name": null,
+    "full_name": "2021 Bentley Continental GTC"
+  },
+  "3735": {
+    "car_name": null,
+    "full_name": "2022 Subaru BRZ"
+  },
+  "3736": {
+    "car_name": null,
+    "full_name": "2022 Ford Bronco Raptor"
+  },
+  "3737": {
+    "car_name": null,
+    "full_name": "2022 BMW iX"
+  },
+  "374": {
+    "car_name": null,
+    "full_name": "2006 Mitsubishi Lancer Evolution IX MR"
+  },
+  "3744": {
+    "car_name": null,
+    "full_name": "2023 Formula Drift #64 Forsberg Racing Nissan Z"
+  },
+  "3745": {
+    "car_name": null,
+    "full_name": "2020 Audi R8"
+  },
+  "3750": {
+    "car_name": null,
+    "full_name": "1995 Mitsubishi Pajero"
+  },
+  "3753": {
+    "car_name": null,
+    "full_name": "2023 Lamborghini Huracan Tecnica"
+  },
+  "3755": {
+    "car_name": null,
+    "full_name": "2022 Ford Supervan 4"
+  },
+  "3759": {
+    "car_name": null,
+    "full_name": "2020 Lamborghini Huracan Evo Spyder"
+  },
+  "3760": {
+    "car_name": null,
+    "full_name": "2022 Porsche 718 Cayman GT4 RS"
+  },
+  "3761": {
+    "car_name": null,
+    "full_name": "2022 Toyota GR86"
+  },
+  "3763": {
+    "car_name": null,
+    "full_name": "2023 BMW M2"
+  },
+  "3764": {
+    "car_name": null,
+    "full_name": "2022 BMW M5 CS"
+  },
+  "3766": {
+    "car_name": null,
+    "full_name": "2023 Chevrolet Corvette Z06"
+  },
+  "3767": {
+    "car_name": null,
+    "full_name": "2022 Acura NSX Type S"
+  },
+  "3771": {
+    "car_name": null,
+    "full_name": "2023 Chevrolet Corvette E-Ray"
+  },
+  "3773": {
+    "car_name": null,
+    "full_name": "2023 Honda Civic Type R"
+  },
+  "3774": {
+    "car_name": null,
+    "full_name": "2023 Lamborghini Countach"
+  },
+  "3775": {
+    "car_name": null,
+    "full_name": "2022 Lamborghini Aventador Ultimae"
+  },
+  "378": {
+    "car_name": null,
+    "full_name": "2004 Mitsubishi Lancer Evolution VIII MR"
+  },
+  "3781": {
+    "car_name": null,
+    "full_name": "2023 Porsche 911 GT3 RS"
+  },
+  "3783": {
+    "car_name": null,
+    "full_name": "1989 Volkswagen Golf Rallye"
+  },
+  "3785": {
+    "car_name": null,
+    "full_name": "1997 Toyota Soarer"
+  },
+  "3789": {
+    "car_name": null,
+    "full_name": "2022 Wuling Mini EV"
+  },
+  "379": {
+    "car_name": null,
+    "full_name": "2005 Subaru Legacy B4 GT"
+  },
+  "3795": {
+    "car_name": null,
+    "full_name": "2023 Meyers Manx"
+  },
+  "3798": {
+    "car_name": null,
+    "full_name": "2017 Mazda MX-5 Cup"
+  },
+  "3811": {
+    "car_name": null,
+    "full_name": "2023 Lucid Air"
+  },
+  "3819": {
+    "car_name": null,
+    "full_name": "2022 Subaru WRX"
+  },
+  "382": {
+    "car_name": null,
+    "full_name": "1997 BMW M3 E36"
+  },
+  "3823": {
+    "car_name": null,
+    "full_name": "2022 Mazda MX-5 RF"
+  },
+  "3827": {
+    "car_name": null,
+    "full_name": "2023 Hyundai Ioniq 5 N"
+  },
+  "3829": {
+    "car_name": null,
+    "full_name": "2022 Hyundai N Vision 74"
+  },
+  "383": {
+    "car_name": null,
+    "full_name": "2005 BMW M3 E46"
+  },
+  "3840": {
+    "car_name": null,
+    "full_name": "2023 Lamborghini Huracan Sterrato"
+  },
+  "3846": {
+    "car_name": null,
+    "full_name": "2024 Ford Mustang GT"
+  },
+  "3847": {
+    "car_name": null,
+    "full_name": "2024 Ford Mustang Dark Horse"
+  },
+  "3848": {
+    "car_name": null,
+    "full_name": "2023 Toyota Camry TRD"
+  },
+  "3849": {
+    "car_name": null,
+    "full_name": "2023 Ford F-150 Raptor R"
+  },
+  "3850": {
+    "car_name": null,
+    "full_name": "2021 Dodge Durango Hellcat"
+  },
+  "3851": {
+    "car_name": null,
+    "full_name": "1991 Toyota Sera"
+  },
+  "3852": {
+    "car_name": null,
+    "full_name": "1991 Honda Beat"
+  },
+  "3854": {
+    "car_name": null,
+    "full_name": "1993 Autozam AZ-1"
+  },
+  "3855": {
+    "car_name": null,
+    "full_name": "1991 Nissan Figaro"
+  },
+  "3856": {
+    "car_name": null,
+    "full_name": "1987 Nissan Be-1"
+  },
+  "3858": {
+    "car_name": null,
+    "full_name": "1997 Nissan Stagea"
+  },
+  "3859": {
+    "car_name": null,
+    "full_name": "1984 Honda City"
+  },
+  "3860": {
+    "car_name": null,
+    "full_name": "1989 Nissan S-Cargo"
+  },
+  "3865": {
+    "car_name": null,
+    "full_name": "1994 Honda Acty"
+  },
+  "3880": {
+    "car_name": null,
+    "full_name": "2023 Toyota GR Corolla"
+  },
+  "3886": {
+    "car_name": null,
+    "full_name": "1995 Mitsubishi Lancer Evolution III"
+  },
+  "3891": {
+    "car_name": null,
+    "full_name": "2024 Lamborghini Revuelto"
+  },
+  "3895": {
+    "car_name": null,
+    "full_name": "2020 Mercedes-Benz SLC43 AMG"
+  },
+  "3903": {
+    "car_name": null,
+    "full_name": "2023 Ford Fiesta ST"
+  },
+  "3904": {
+    "car_name": null,
+    "full_name": "2022 Ford Focus ST"
+  },
+  "3908": {
+    "car_name": null,
+    "full_name": "2022 Honda e"
+  },
+  "391": {
+    "car_name": null,
+    "full_name": "2004 Maserati MC12"
+  },
+  "3910": {
+    "car_name": null,
+    "full_name": "2023 Porsche 911 Dakar"
+  },
+  "3914": {
+    "car_name": null,
+    "full_name": "1991 Toyota Chaser GT"
+  },
+  "3917": {
+    "car_name": null,
+    "full_name": "2023 Audi R8 GT"
+  },
+  "3918": {
+    "car_name": null,
+    "full_name": "1995 Nissan Gloria"
+  },
+  "3921": {
+    "car_name": null,
+    "full_name": "2024 Nissan Z Nismo"
+  },
+  "3928": {
+    "car_name": null,
+    "full_name": "2022 Hyundai i20 N"
+  },
+  "3929": {
+    "car_name": null,
+    "full_name": "1989 Nissan Pao"
+  },
+  "3933": {
+    "car_name": null,
+    "full_name": "1997 Toyota Chaser"
+  },
+  "3937": {
+    "car_name": null,
+    "full_name": "1970 Honda N600"
+  },
+  "3950": {
+    "car_name": null,
+    "full_name": "1967 Ferrari 275 GTB4 Spider"
+  },
+  "3953": {
+    "car_name": null,
+    "full_name": "2023 Porsche 911 Turbo S"
+  },
+  "3954": {
+    "car_name": null,
+    "full_name": "2024 Chevrolet Camaro ZL1"
+  },
+  "3955": {
+    "car_name": null,
+    "full_name": "2024 Ram TRX"
+  },
+  "3958": {
+    "car_name": null,
+    "full_name": "2023 Dodge Challenger SRT Demon 170"
+  },
+  "3959": {
+    "car_name": null,
+    "full_name": "2022 Dodge Challenger SRT"
+  },
+  "3960": {
+    "car_name": null,
+    "full_name": "1994 Subaru Vivio RX-R"
+  },
+  "3964": {
+    "car_name": null,
+    "full_name": "2024 Toyota Prius Prime XSE Premium"
+  },
+  "398": {
+    "car_name": null,
+    "full_name": "1995 Toyota MR2 GT"
+  },
+  "3980": {
+    "car_name": null,
+    "full_name": "1998 Renault Sport Spider"
+  },
+  "3983": {
+    "car_name": null,
+    "full_name": "2024 BMW X6 M"
+  },
+  "3999": {
+    "car_name": null,
+    "full_name": "2002 Nissan Silvia Spec-R"
+  },
+  "4002": {
+    "car_name": null,
+    "full_name": "2024 Lamborghini Temerario"
+  },
+  "4034": {
+    "car_name": null,
+    "full_name": "1972 Honda Z GT"
+  },
+  "4038": {
+    "car_name": null,
+    "full_name": "1999 Toyota Altezza"
+  },
+  "405": {
+    "car_name": null,
+    "full_name": "2000 Ford Mustang Cobra R"
+  },
+  "4055": {
+    "car_name": null,
+    "full_name": "1996 Toyota Starlet Glanza"
+  },
+  "4057": {
+    "car_name": null,
+    "full_name": "1997 Nissan Skyline GT-R"
+  },
+  "4067": {
+    "car_name": null,
+    "full_name": "2025 Bently Continental GT"
+  },
+  "4069": {
+    "car_name": null,
+    "full_name": "1988 BMW M3"
+  },
+  "4081": {
+    "car_name": null,
+    "full_name": "2024 Koenigsegg Gemera"
+  },
+  "4084": {
+    "car_name": null,
+    "full_name": "1972 Datsun #269 Attacking The Clock Racing 240Z All Carbon Hillclimb Beast"
+  },
+  "4085": {
+    "car_name": null,
+    "full_name": "1990 Mitsubishi #269 Attacking The Clock Racing Minicab Time Attack"
+  },
+  "4090": {
+    "car_name": null,
+    "full_name": "2001 Mitsubishi Lancer Evolution VI TME"
+  },
+  "4094": {
+    "car_name": null,
+    "full_name": "2024 Nissan GT-R Nismo"
+  },
+  "411": {
+    "car_name": null,
+    "full_name": "2005 Honda NSX-R"
+  },
+  "4114": {
+    "car_name": null,
+    "full_name": "1992 Nissan Skyline GT-R"
+  },
+  "4118": {
+    "car_name": null,
+    "full_name": "2025 McLaren W1"
+  },
+  "4119": {
+    "car_name": null,
+    "full_name": "1998 Nissan Skyline Autech"
+  },
+  "412": {
+    "car_name": null,
+    "full_name": "1992 Honda NSX-R"
+  },
+  "4124": {
+    "car_name": null,
+    "full_name": "2013 Mercedes-Benz G65 AMG (Traffic)"
+  },
+  "4125": {
+    "car_name": null,
+    "full_name": "1994 Honda Acty (Traffic)"
+  },
+  "4126": {
+    "car_name": null,
+    "full_name": "2022 Honda e (Traffic)"
+  },
+  "4127": {
+    "car_name": null,
+    "full_name": "1995 Mitsubishi Pajero (Traffic)"
+  },
+  "4128": {
+    "car_name": null,
+    "full_name": "2022 Subaru WRX (Traffic)"
+  },
+  "4129": {
+    "car_name": null,
+    "full_name": "1997 Nissan Stagea (Traffic)"
+  },
+  "4144": {
+    "car_name": null,
+    "full_name": "1992 Mazda RX-7"
+  },
+  "4145": {
+    "car_name": null,
+    "full_name": "1974 Mazda #123 Mad MIke 808 Wagon Fursty"
+  },
+  "4147": {
+    "car_name": null,
+    "full_name": "2021 Alfa Romeo Giulia GTAM"
+  },
+  "4156": {
+    "car_name": null,
+    "full_name": "2025 Ferrari F80"
+  },
+  "4158": {
+    "car_name": null,
+    "full_name": "2010 Lexus LFA (Forza Edition)"
+  },
+  "4160": {
+    "car_name": null,
+    "full_name": "1989 Nissan S-Cargo (Forza Edition)"
+  },
+  "4162": {
+    "car_name": null,
+    "full_name": "1985 Toyota Sprinter (Forza Edition)"
+  },
+  "4163": {
+    "car_name": null,
+    "full_name": "2020 Wuling Sunshine S (Forza Edition)"
+  },
+  "4164": {
+    "car_name": null,
+    "full_name": "2022 Subaru BRZ (Forza Edition)"
+  },
+  "4165": {
+    "car_name": null,
+    "full_name": "1973 Mazda RX-3 (Forza Edition)"
+  },
+  "4166": {
+    "car_name": null,
+    "full_name": "2023 BMW M2 (Forza Edition)"
+  },
+  "4167": {
+    "car_name": null,
+    "full_name": "2012 Nisan GT-R Black Edition R35 (Forza Edition)"
+  },
+  "4168": {
+    "car_name": null,
+    "full_name": "1968 Ford Mustang GT 2+2 Fastback (Forza Edition"
+  },
+  "4169": {
+    "car_name": null,
+    "full_name": "1990 Mercedes-Benz 190E 2.5-16 Evolution II (Forza Edition)"
+  },
+  "417": {
+    "car_name": null,
+    "full_name": "1987 Buick Regal GNX"
+  },
+  "4171": {
+    "car_name": null,
+    "full_name": "1986 Ford F-150 XLT Lariat (Forza Edition)"
+  },
+  "4175": {
+    "car_name": null,
+    "full_name": "2020 Ford F-450 DRW (Forza Edition)"
+  },
+  "4179": {
+    "car_name": null,
+    "full_name": "1990 Nissan #12 Skyline GT-R (BNR32GR.A) JTC"
+  },
+  "419": {
+    "car_name": null,
+    "full_name": "2006 Audi RS4"
+  },
+  "4197": {
+    "car_name": null,
+    "full_name": "1994 Mazda MX-5 Miata (Forza Edition)"
+  },
+  "4198": {
+    "car_name": null,
+    "full_name": "1999 Dodge Viper GTS ACR (Forza Edition)"
+  },
+  "4199": {
+    "car_name": null,
+    "full_name": "2019 Toyota Tacoma TRD Pro (Forza Edition)"
+  },
+  "420": {
+    "car_name": null,
+    "full_name": "2003 Audi RS6"
+  },
+  "4200": {
+    "car_name": null,
+    "full_name": "2020 Lotus Evija (Forza Edition)"
+  },
+  "4205": {
+    "car_name": null,
+    "full_name": "1972 Nissan Patrol"
+  },
+  "4210": {
+    "car_name": null,
+    "full_name": "2018 Lotus Scura Motorsports Exige WTAC"
+  },
+  "4211": {
+    "car_name": null,
+    "full_name": "1990 Honda #19 101 Motorsport CRX WTAC"
+  },
+  "4212": {
+    "car_name": null,
+    "full_name": "1993 Nissan #32 Skyline WTAC XTREME GTR"
+  },
+  "4213": {
+    "car_name": null,
+    "full_name": "2000 Nissan #36 Dream Project S15 Silvia WTAC"
+  },
+  "4214": {
+    "car_name": null,
+    "full_name": "1995 Toyota J&J Motorsport Supra WTAC"
+  },
+  "4216": {
+    "car_name": null,
+    "full_name": "1994 Honda Acty (RakuRaku Express)"
+  },
+  "422": {
+    "car_name": null,
+    "full_name": "2002 Acura RSX Type-S"
+  },
+  "4221": {
+    "car_name": null,
+    "full_name": "2026 GR GT Prototype"
+  },
+  "4222": {
+    "car_name": null,
+    "full_name": "1989 Nissan Silvia K's"
+  },
+  "4223": {
+    "car_name": null,
+    "full_name": "2000 Nissan Skyline GT-R V-Spec II"
+  },
+  "423": {
+    "car_name": null,
+    "full_name": "1990 Mazda RX-7"
+  },
+  "4231": {
+    "car_name": null,
+    "full_name": "2004 Honda #52 Evasive Motorsports S2000 WTAC"
+  },
+  "4232": {
+    "car_name": null,
+    "full_name": "2005 Porsche Cayman GT3 WTAC"
+  },
+  "4234": {
+    "car_name": null,
+    "full_name": "2008 Honda Civic Type R"
+  },
+  "4238": {
+    "car_name": null,
+    "full_name": "1983 Nissan Skyline 2000 Turbo RS"
+  },
+  "4250": {
+    "car_name": null,
+    "full_name": "1985 Toyota Sprinter (Touge Edition)"
+  },
+  "4251": {
+    "car_name": null,
+    "full_name": "2003 Honda S2000 (Touge Edition)"
+  },
+  "4252": {
+    "car_name": null,
+    "full_name": "1998 Subaru Impreza 22B (Touge Edition)"
+  },
+  "4254": {
+    "car_name": null,
+    "full_name": "2021 Honda #33 Integra WTAC"
+  },
+  "4255": {
+    "car_name": null,
+    "full_name": "2005 Toyota Crown Taxi"
+  },
+  "4257": {
+    "car_name": null,
+    "full_name": "2017 Toyota JPN Taxi"
+  },
+  "4259": {
+    "car_name": null,
+    "full_name": "2013 Toyota 86 Stories"
+  },
+  "4260": {
+    "car_name": null,
+    "full_name": "2024 Nissan GT-R Nismo (Unobtainable)"
+  },
+  "4261": {
+    "car_name": null,
+    "full_name": "1995 Porsche 911 GT2 (Unobtainable)"
+  },
+  "4263": {
+    "car_name": null,
+    "full_name": "2026 Toyota Scallop (Unobtainable)"
+  },
+  "4264": {
+    "car_name": null,
+    "full_name": "2018 Ferrari FXX-K Evo (Welcome pack)"
+  },
+  "4265": {
+    "car_name": null,
+    "full_name": "2021 Mercedes-AMG GT Black Series (Welcome Pack)"
+  },
+  "4266": {
+    "car_name": null,
+    "full_name": "2021 BMW M4 (Welcome Pack)"
+  },
+  "4267": {
+    "car_name": null,
+    "full_name": "2004 Mitsubishi Lancer Evolution VIII MR (Welcome Pack)"
+  },
+  "4268": {
+    "car_name": null,
+    "full_name": "2023 Ford F-150 Raptor R (Welcome Pack)"
+  },
+  "427": {
+    "car_name": null,
+    "full_name": "2003 Honda S2000"
+  },
+  "4277": {
+    "car_name": null,
+    "full_name": "1992 Honda #21 Hardrace/JDMYard Civic WTAC"
+  },
+  "4278": {
+    "car_name": null,
+    "full_name": "2025 Toyota Land Cruiser"
+  },
+  "4287": {
+    "car_name": null,
+    "full_name": "1994 Subaru Vivio RX-R (Forza Edition)"
+  },
+  "4303": {
+    "car_name": null,
+    "full_name": "2012 Nissan GT-R Black Edition R35 (Touge Edition)"
+  },
+  "4313": {
+    "car_name": null,
+    "full_name": "1970 Porsche #3 917 LH (Forza Edition)"
+  },
+  "4315": {
+    "car_name": null,
+    "full_name": "1962 Peel P50 (Trolli Edition)"
+  },
+  "433": {
+    "car_name": null,
+    "full_name": "2005 TVR Sagaris"
+  },
+  "4332": {
+    "car_name": null,
+    "full_name": "2005 Toyota Crown Taxi (Traffic)"
+  },
+  "4333": {
+    "car_name": null,
+    "full_name": "2017 Toyota JPN Taxi (Traffic)"
+  },
+  "4341": {
+    "car_name": null,
+    "full_name": "2017 Ferrari J50 (Pre Order)"
+  },
+  "4342": {
+    "car_name": null,
+    "full_name": "1965 Toyota Sports 800 (Fanta Edition)"
+  },
+  "4354": {
+    "car_name": null,
+    "full_name": "1990 Jaguar XJ-S Forza Edition"
+  },
+  "440": {
+    "car_name": null,
+    "full_name": "1994 Nissan Silvia K's"
+  },
+  "455": {
+    "car_name": null,
+    "full_name": "1985 Toyota Sprinter"
+  },
+  "458": {
+    "car_name": null,
+    "full_name": "1974 Lancia Stratos"
+  },
+  "460": {
+    "car_name": null,
+    "full_name": "1992 Toyota Supra 2.0 GT"
+  },
+  "461": {
+    "car_name": null,
+    "full_name": "1998 Toyota Supra RZ"
+  },
+  "483": {
+    "car_name": null,
+    "full_name": "1999 Dodge Viper GTS ACR"
+  },
+  "489": {
+    "car_name": null,
+    "full_name": "1993 Jaguar XJ220"
+  },
+  "513": {
+    "car_name": null,
+    "full_name": "1969 Dodge Charger R/T"
+  },
+  "567": {
+    "car_name": null,
+    "full_name": "1998 Nissan R390"
+  },
+  "568": {
+    "car_name": null,
+    "full_name": "1998 Mercedes-Benz CLK GTR"
+  },
+  "569": {
+    "car_name": null,
+    "full_name": "2005 Honda NSX-R GT"
+  },
+  "615": {
+    "car_name": null,
+    "full_name": "2007 Peugeot 207 Super 2000"
+  },
+  "625": {
+    "car_name": null,
+    "full_name": "2007 Honda Civic Type R"
+  },
+  "633": {
+    "car_name": null,
+    "full_name": "1983 Audi Sport Quattro"
+  },
+  "634": {
+    "car_name": null,
+    "full_name": "1980 Renault 5 Turbo"
+  },
+  "637": {
+    "car_name": null,
+    "full_name": "1967 Lamborghini Miura P400"
+  },
+  "639": {
+    "car_name": null,
+    "full_name": "1970 Dodge Challenger Hemi"
+  },
+  "641": {
+    "car_name": null,
+    "full_name": "1998 Porsche 911 GT1"
+  }
+}

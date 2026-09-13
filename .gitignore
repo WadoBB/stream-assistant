@@ -13,6 +13,17 @@ ai-computer/logs/
 gaming-pc/logs/
 ai-computer/overlay/state.json
 ai-computer/overlay/state.json.tmp
+ai-computer/overlay/car_card_state.json
+ai-computer/overlay/car_card_state.json.tmp
+
+# Car images are per-user content (not sourced from any repo-tracked asset) -
+# the default_shadow.svg placeholder is tracked, but per-car photos aren't.
+ai-computer/overlay/car_images/*
+!ai-computer/overlay/car_images/default_shadow.svg
+
+# car_ordinals.json itself IS tracked (see below) - only its transient
+# write-in-progress temp file is excluded.
+ai-computer/data/car_ordinals.json.tmp
 
 # --- Python ---
 __pycache__/

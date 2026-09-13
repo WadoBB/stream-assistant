@@ -261,7 +261,13 @@ Rules:
             "total_racers": my.get("total_racers"),
             "best_lap":     (my.get("best_lap") if time_to_seconds(my.get("best_lap")) is not None else telemetry_summary.get("best_lap")) if lap_based else "",
             "race_time":    my.get("race_time") if time_to_seconds(my.get("race_time")) is not None else telemetry_summary.get("race_time"),
-            "notes":        notes
+            "notes":        notes,
+            # Not written to the Results tab (not in RESULTS_COLUMNS) - carried
+            # through in-memory only, so sheets_writer.py can learn the
+            # ordinal->car_name mapping for the Car Card overlay at the one
+            # moment both are known together. "?" (telemetry's own fallback
+            # when car_ordinal was never captured) is treated as unknown.
+            "car_ordinal":  telemetry_summary.get("car_ordinal")
         }
 
         my_position     = my.get("position", 99)

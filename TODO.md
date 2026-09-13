@@ -160,13 +160,14 @@ arguably already *the* suggestion), and/or the Cars tab's Win Rate/Races
 columns can rank alternatives. No new aggregation logic needed, just a
 query against data that already exists.
 
-**Considered and set aside during the brainstorm:** triggering off
-`car_ordinal` changes in telemetry (already on CLAUDE.md's "not yet built"
-list) to react to a car switch - simpler technically (pure telemetry, no new
-screen detection) but reactive ("here's how this car has done") rather than
-predictive ("pick this car"). Worth remembering as a fallback if the
-lobby-screen detection proves too unreliable, but it's a different feature,
-not a substitute.
+**Considered during the brainstorm and split off into its own project
+(see "Car Card Overlay" below), not a substitute for this one:** triggering
+off `car_ordinal` changes in telemetry to react to a car switch - simpler
+technically (pure telemetry, no new screen detection) but reactive ("here's
+how this car has done") rather than predictive ("pick this car"). The two
+are genuinely separate features with separate triggers and separate
+purposes; they only happen to share one piece of infrastructure, the
+car-ordinal database being built for the Car Card project.
 
 **Next step (not code):** watch the actual race notification/car-select
 screen closely during normal play - what it looks like, when it appears,
@@ -176,6 +177,100 @@ has a known false-positive mode here, see "Known Issue — False Capture on
 Quit Race" in CLAUDE.md - worth having that in mind while observing). That
 observation is the actual prerequisite for scoping the detection work; there's
 nothing to build correctly without it.
+
+### Car Card Overlay — built 2026-09-12, needs the sheet columns added + live testing
+Shows a graphic (car image, tuner, painter, Races/Wins/Win %) whenever the
+selected car changes — triggered by `car_ordinal` changing in telemetry, in
+free roam or otherwise, not tied to a race starting or ending. Same overlay
+plumbing as the record alert (state file, `controller.py` serving it,
+`ai-computer/overlay` page polling and animating). Unlike Car Suggester,
+this needs **no new screen detection** — pure telemetry plus Sheets lookups
+— so it doesn't share that project's blocker.
+
+**Built, not yet live-tested:**
+`telemetry_listener.py` now tracks `car_ordinal` on every packet (not just at
+race start) and fires `on_car_change(ordinal, class, pi, drivetrain)` on any
+change, independent of race state - a persistent `_last_known_ordinal` that
+survives `_reset_race_state()` so finishing a race doesn't look like a car
+change. `main.py` wires this to `SheetsWriter.update_car_card()` on a
+background thread (never blocking the telemetry socket loop with a Sheets
+API round-trip). `sheets_writer.py` gained: a Cars-tab cache keyed both by
+Ordinal and by normalized Car Name (all columns found by header text),
+`update_car_card()` (resolve ordinal -> identity + stats -> write
+`car_card_state.json`), and `learn_car_ordinal()` (called from `write_race()`,
+wrapped so a failure there can't block the actual Results write - same
+defensive pattern as `check_for_new_record()`). `controller.py` serves
+`/car_card`, `/car_card/state`, `/car_card/image/<ordinal>` (falls back to
+`default_shadow.svg`), and `/car_card/test` for manual triggering the same
+way `/overlay/test` works for the record alert. `ai-computer/data/
+car_ordinals.json` seeded with all 671 entries from the Gist, visually
+verified in-browser for both the "known car" and "never raced yet" card
+states.
+
+**One manual step before this can be tested live:** the user needs to add
+**Painter** and **Ordinal** as new columns on the real Cars tab - nothing in
+this codebase can do that. Everything reads those columns by header name and
+degrades gracefully (blank fields, not a crash) if they don't exist yet, but
+the feature has nothing to show without them.
+
+**A neat side-discovery while scoping this:** Forza's "long descriptive"
+full car name (e.g. "1969 Toyota 2000 GT" — Year + MFG + Model) is the exact
+same text CLAUDE.md's "Known Issue — False Capture on Quit Race" describes
+showing up when a bad scoreboard capture grabs the wrong screen. Same
+underlying game text, two very different contexts.
+
+**Why this needs new car-identity infrastructure:** `car_ordinal` is
+Forza's internal numeric ID for the car model - nothing in the pipeline
+today maps it to a car name; that only ever happens via Claude's OCR of the
+post-race scoreboard. Design worked out with the user 2026-09-12:
+
+- **Seed file** `ai-computer/data/car_ordinals.json`, one entry per ordinal,
+  seeded once (not a live dependency) from a community FH6 ordinal list
+  (671 entries, gist.github.com/HDR/0659d1717bc61504bf83750628963f4f,
+  format inverted from name→ordinal to ordinal→name on import). Each entry:
+  `{"full_name": "...", "car_name": null}`. `full_name` is the Gist's
+  Year+MFG+Model string, used as a friendly display fallback for a car with
+  no Cars-tab row yet. `car_name` is the abbreviated scoreboard string used
+  everywhere else in this system to key a Cars-tab row - starts `null` for
+  all 671 seeded entries and gets filled in automatically the first time
+  that car is actually raced (the one moment telemetry's ordinal and
+  Claude's OCR'd name are both known together).
+- **Cars tab gets exactly one new column: Ordinal.** No separate "Full Name"
+  column needed there - for any car that already has a row, Year + MFG +
+  Model (already three separate existing columns) concatenated *is* the
+  full name, so the seed file's `full_name` field is redundant once a Cars
+  tab row exists and only matters before one does.
+- **Backfilling Ordinal on already-existing Cars tab rows happens lazily,
+  not as a one-time reconciliation project** - the user confirmed the
+  abbreviated "Car Name" field is too inconsistent (sometimes includes MFG,
+  sometimes an abbreviation, sometimes neither) to reliably auto-match
+  against the Gist's full names in bulk. Instead: next time a car is raced,
+  telemetry's ordinal + the matched Cars-tab row backfills Ordinal there if
+  missing - same self-healing pattern already used for Year/MFG/Model in
+  `applyUpdates_`.
+- **New Cars tab column: Painter** (manual credit field, like Tuner already
+  is - not computed by any script).
+- **Car images**, one file per ordinal (`ai-computer/overlay/car_images/
+  <ordinal>.png`), with a single `default_shadow.png` served whenever a
+  specific ordinal's image doesn't exist yet. Images themselves need to come
+  from the user - no legitimate source to pull them from otherwise.
+- All new Sheets lookups for this feature read columns **by header name**,
+  never hardcoded position - the whole Races/Wins saga earlier this project
+  was caused by hardcoded positions, and this is a chance to not repeat it.
+
+**Open wrinkle, not urgent:** ordinal identifies the car model, not the tune
+- a car with both a Road and a Dirt build at the Cars tab is two different
+rows. Telemetry's live PI resolves Class the same way race results already
+do, but if both tunes land in the same Class there's no signal to pick
+between them. Fine to just pick a tiebreak default (e.g. Road) rather than
+solve this properly.
+
+**FH6-only for now** - the Gist is FH6 specific; FH5 would need its own
+separate ordinal source if this is ever extended there.
+
+**This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
+just a few Sheets/config additions and threading `car_ordinal` through
+`telemetry_listener.py` to fire on any change, not just at race start.
 
 ### M (Meta) Flag — Best by Track+Class Exclusion — considered, deferred 2026-09-12
 `identifyYWinners_` in `forza_car_updater.gs` excludes `M`-flagged cars

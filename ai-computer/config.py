@@ -33,6 +33,25 @@ OVERLAY_HTML            = r"C:\StreamAssistant\ai-computer\overlay\index.html"
 OVERLAY_STATE_FILE      = r"C:\StreamAssistant\ai-computer\overlay\state.json"
 OVERLAY_SOUND_FILE      = r"C:\StreamAssistant\ai-computer\overlay\cheer.mp3"
 
+# --- Stream Overlay (car card) ---
+# Separate from the record-alert overlay above - triggered by car_ordinal
+# changing in telemetry (any time you select a different car, not tied to a
+# race), not by a race result. controller.py serves CAR_CARD_HTML at
+# /car_card, CAR_CARD_STATE_FILE's contents at /car_card/state, and images
+# from CAR_IMAGES_FOLDER (named "<ordinal>.png") at /car_card/image/<ordinal>,
+# falling back to CAR_CARD_DEFAULT_IMAGE if that ordinal has no image yet.
+CAR_CARD_HTML           = r"C:\StreamAssistant\ai-computer\overlay\car_card.html"
+CAR_CARD_STATE_FILE     = r"C:\StreamAssistant\ai-computer\overlay\car_card_state.json"
+CAR_IMAGES_FOLDER       = r"C:\StreamAssistant\ai-computer\overlay\car_images"
+CAR_CARD_DEFAULT_IMAGE  = r"C:\StreamAssistant\ai-computer\overlay\car_images\default_shadow.svg"
+
+# Local seed/learned database mapping Forza's internal car_ordinal to a car's
+# full name (Year+MFG+Model, from a community FH6 ordinal list, seeded once -
+# see TODO.md's "Car Card Overlay" entry) and its abbreviated scoreboard name
+# (car_name, learned automatically the first time that car is actually
+# raced). Never a live external dependency - this file is the local copy.
+CAR_ORDINALS_FILE       = r"C:\StreamAssistant\ai-computer\data\car_ordinals.json"
+
 # --- Anthropic API ---
 # Key is loaded from credentials\.env - never hardcode here
 ANTHROPIC_MODEL         = "claude-sonnet-4-6"

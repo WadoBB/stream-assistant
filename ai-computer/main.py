@@ -68,7 +68,9 @@ class StreamAssistant:
         self.game_version   = game_version
         self.extractor      = ResultsExtractor(game_version=game_version, on_results_ready=self.on_results_ready)
         self.writer         = SheetsWriter(game_version=game_version)
-        self.listener       = TelemetryListener(game_version=game_version, on_race_end=self.on_race_end)
+        self.listener       = TelemetryListener(game_version=game_version,
+                                                 on_race_end=self.on_race_end,
+                                                 on_car_change=self.on_car_change)
 
     def on_race_end(self, telemetry_summary):
         """
@@ -95,6 +97,27 @@ class StreamAssistant:
         """
         log.info(f"Results ready for race {race_result.get('race_id')} - writing to sheets...")
         self.writer.write_race(race_result, opponents)
+
+    def on_car_change(self, ordinal, car_class, car_pi, drivetrain):
+        """
+        Called by TelemetryListener whenever the selected car's ordinal
+        changes - free roam, car select, between races, not tied to a race.
+        Runs the actual Sheets lookup/overlay write on a background thread so
+        a Sheets API round-trip never blocks the telemetry socket loop, which
+        runs on the main thread and needs to keep reading UDP packets
+        promptly (see start() below - the listener is not itself threaded).
+        """
+        threading.Thread(
+            target=self._update_car_card_safe,
+            args=(ordinal, car_class),
+            daemon=True
+        ).start()
+
+    def _update_car_card_safe(self, ordinal, car_class):
+        try:
+            self.writer.update_car_card(ordinal, car_class)
+        except Exception as e:
+            log.error(f"Car Card update failed (non-fatal): {e}")
 
     def start(self):
         """Start all components."""

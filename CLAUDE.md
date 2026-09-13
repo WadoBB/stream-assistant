@@ -122,6 +122,60 @@ the cached Best by Track+Class time for that (Track, Class). Added
   `.play()` is wrapped in `.catch(() => {})` so a browser that does block it
   just skips the sound instead of throwing.
 
+## Stream Overlay — Car Card
+Shows a card (image, tuner, painter, Races/Wins/Win %) whenever the selected
+car changes, in free roam or otherwise — not tied to a race. Built
+2026-09-12, not yet tested live (needs "Painter" and "Ordinal" added to the
+Cars tab first — see TODO.md).
+
+- `telemetry_listener.py` tracks `car_ordinal` on **every** packet, not just
+  at race start, and fires `on_car_change(ordinal, class, pi, drivetrain)` on
+  any change. `_last_known_ordinal` deliberately survives
+  `_reset_race_state()` — car selection persists across races, so it must
+  not be wiped by the per-race reset or every race-end would look like a
+  car change.
+- `main.py`'s `on_car_change` runs `SheetsWriter.update_car_card()` on a
+  background thread — telemetry runs on the main thread and must keep
+  reading UDP packets promptly, so a Sheets API round-trip can never happen
+  inline with packet handling the way it can safely for the record alert's
+  `write_race()` path (which already runs off the main telemetry loop).
+- **Why `car_ordinal` alone isn't enough:** it's Forza's internal numeric ID
+  for the car model — nothing else in the pipeline maps it to a name; that
+  only happens via Claude's OCR of the post-race scoreboard. Car identity
+  comes from two sources, resolved in `SheetsWriter.update_car_card()`:
+  - `ai-computer/data/car_ordinals.json` — a local seed/learned database,
+    **tracked in git** (unlike the overlay state files) since it's
+    accumulated knowledge worth not losing. Seeded once from a community FH6
+    ordinal list (671 entries, gist.github.com/HDR/0659d1717bc61504bf83750628963f4f).
+    Each entry: `{"full_name": "...", "car_name": null}` — `full_name` is the
+    Gist's Year+MFG+Model string (display fallback for a car with no Cars-tab
+    row yet); `car_name` is the abbreviated scoreboard string that actually
+    keys a Cars-tab row, filled in automatically by `learn_car_ordinal()` the
+    first time that car is raced (the one moment telemetry's ordinal and
+    Claude's OCR'd name are both known together). FH6-only — FH5 would need
+    its own separate ordinal source.
+  - **The Cars tab's own `Ordinal` column** (once matched, the fast path —
+    one lookup gets the whole row). Not backfilled as a one-time
+    reconciliation project — the abbreviated "Car Name" field is too
+    inconsistent (sometimes includes MFG, sometimes an abbreviation,
+    sometimes neither) to bulk-match against the Gist's full names reliably.
+    Instead `learn_car_ordinal()` backfills it lazily, one car at a time, the
+    next time that car is actually raced — same self-healing pattern as the
+    Year/MFG/Model backfill in the Apps Script's `applyUpdates_`.
+  - All of this reads Cars-tab columns **by header name**, never hardcoded
+    position — the whole Races/Wins saga earlier in this project was caused
+    by hardcoded positions, and this was a chance not to repeat it.
+- `controller.py` serves the page at `/car_card`, state at `/car_card/state`,
+  car images at `/car_card/image/<ordinal>` (falls back to
+  `ai-computer/overlay/car_images/default_shadow.svg` if that ordinal has no
+  image — images are per-user content, not something this codebase can
+  source itself), and `/car_card/test` for manual triggering.
+- **Open wrinkle, not urgent:** `car_ordinal` identifies the car model, not
+  the tune — a car built for both Road and Dirt is two different Cars-tab
+  rows. Telemetry's live PI resolves Class the same way race results already
+  do, but if both tunes share a Class there's no signal to pick between them;
+  currently just picks whichever candidate row is found first.
+
 ## Network Share (Screenshots)
 The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.
 The gaming PC maps this as drive **Z:** → `\\192.168.137.230\StreamCaptures`.
@@ -358,6 +412,12 @@ point-to-point and trail races (no laps to track). Spec Race rows have Notes = "
 
 **Cars tab** (inventory, managed manually + by Apps Script):
 FH6 | Year | MFG | Model | Car Name | D | OC | Class | Type | Fav | Notes | Tuner | Tune | Races | Wins | Win Rate
+
+**Two more columns needed for the Car Card overlay, not yet added by the
+user: `Painter`** (manual credit field, like Tuner already is) **and
+`Ordinal`** (Forza's internal car ID, backfilled automatically over time by
+`learn_car_ordinal()` — see "Stream Overlay — Car Card" below). Position
+doesn't matter for either — both are found by header name, not position.
 
 **Races and Wins** (columns N and O) are updated automatically after every race by
 `sheets_writer.py`. Matching uses the composite key **(Car Name, Class, Type)** —

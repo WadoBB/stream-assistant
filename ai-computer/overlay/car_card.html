@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stream Assistant Car Card</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  #car-card {
+    position: fixed;
+    top: 6%;
+    left: 3%;
+    transform: translateX(-110%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: linear-gradient(135deg, #1b1f3a, #12283a);
+    border: 2px solid #47c8ff;
+    border-radius: 14px;
+    box-shadow: 0 0 24px rgba(71, 200, 255, 0.5), 0 8px 24px rgba(0,0,0,0.5);
+    padding: 14px 22px;
+    color: #fff;
+    max-width: 480px;
+  }
+
+  #car-card.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  #cc-image {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  #cc-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #47c8ff;
+    text-shadow: 0 0 10px rgba(71, 200, 255, 0.7);
+    margin-bottom: 4px;
+    line-height: 1.15;
+  }
+
+  #cc-credits {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-bottom: 4px;
+  }
+
+  #cc-stats {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  #cc-unknown {
+    font-size: 13px;
+    opacity: 0.7;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div id="car-card">
+  <img id="cc-image" src="" alt="">
+  <div>
+    <div id="cc-name"></div>
+    <div id="cc-credits"></div>
+    <div id="cc-stats"></div>
+    <div id="cc-unknown" hidden>Not yet raced - no stats on record</div>
+  </div>
+</div>
+
+<script>
+  // Same polling pattern as index.html (the record alert), separate state
+  // file and endpoint. Car changes can happen in quick succession while
+  // browsing a garage - each new ordinal restarts the fade timer instead of
+  // fighting a previous one, so rapid browsing just keeps the card visible
+  // rather than flickering.
+  const POLL_MS = 1500;
+  const MAX_AGE_MS = 60 * 1000;
+  const SHOW_MS = 10000;
+
+  let lastOrdinal = null;
+  let hideTimer = null;
+
+  function formatWinRate(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    const n = Number(v);
+    if (Number.isNaN(n)) return v;              // already a display string
+    return (n <= 1 ? n * 100 : n).toFixed(1) + '%';
+  }
+
+  function showCard(event) {
+    const displayName = event.full_name || event.car_name || `Unknown car (#${event.ordinal})`;
+    document.getElementById('cc-name').textContent = displayName;
+
+    const credits = [];
+    if (event.tuner)   credits.push(`Tuned by ${event.tuner}`);
+    if (event.painter) credits.push(`Painted by ${event.painter}`);
+    document.getElementById('cc-credits').textContent = credits.join(' · ');
+
+    const statsEl   = document.getElementById('cc-stats');
+    const unknownEl = document.getElementById('cc-unknown');
+    if (event.known && event.races) {
+      const winRate = formatWinRate(event.win_rate);
+      statsEl.textContent = `${event.races} Races · ${event.wins || 0} Wins` +
+        (winRate ? ` · ${winRate}` : '');
+      statsEl.hidden = false;
+      unknownEl.hidden = true;
+    } else {
+      statsEl.hidden = true;
+      unknownEl.hidden = false;
+    }
+
+    document.getElementById('cc-image').src = `/car_card/image/${event.ordinal}`;
+
+    const el = document.getElementById('car-card');
+    el.classList.add('show');
+
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);
+  }
+
+  async function poll() {
+    try {
+      const resp = await fetch('/car_card/state', { cache: 'no-store' });
+      const event = await resp.json();
+
+      if (event && event.ordinal && event.ordinal !== lastOrdinal) {
+        const ageMs = Date.now() - new Date(event.timestamp).getTime();
+        lastOrdinal = event.ordinal;
+        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+          showCard(event);
+        }
+      }
+    } catch (e) {
+      // Controller unreachable or pipeline not running yet - just retry next poll.
+    }
+    setTimeout(poll, POLL_MS);
+  }
+
+  poll();
+</script>
+
+</body>
+</html>

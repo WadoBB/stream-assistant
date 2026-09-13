@@ -16,7 +16,8 @@ from googleapiclient.errors import HttpError
 from collections import defaultdict
 from config import (SHEETS_CREDENTIALS, FH5_SPREADSHEET_ID, FH6_SPREADSHEET_ID,
                      RESULTS_TAB, OPPONENTS_TAB, CARS_TAB, BEST_BY_TAB,
-                     OVERLAY_FOLDER, OVERLAY_STATE_FILE)
+                     OVERLAY_FOLDER, OVERLAY_STATE_FILE,
+                     CAR_ORDINALS_FILE, CAR_CARD_STATE_FILE)
 from results_extractor import NON_COMPETITIVE_NOTES, time_to_seconds
 
 
@@ -105,6 +106,16 @@ def _format_seconds(secs):
     seconds = total - minutes * 60
     return f"{minutes}:{seconds:06.3f}"
 
+
+def _column_letter(idx):
+    """0-indexed column number -> spreadsheet letter (0 -> A, 13 -> N)."""
+    idx += 1
+    letters = ""
+    while idx > 0:
+        idx, rem = divmod(idx - 1, 26)
+        letters = chr(65 + rem) + letters
+    return letters
+
 # Column order must match your sheet headers exactly
 RESULTS_COLUMNS = [
     "date", "race_id", "position", "car", "class",
@@ -130,6 +141,14 @@ class SheetsWriter:
         self.service        = self._build_service()
         self._best_times        = {}      # (track, class) -> seconds, lazy-loaded
         self._best_times_loaded = False
+
+        # Car Card overlay state - see update_car_card()/learn_car_ordinal().
+        self._car_ordinals        = {}    # ordinal (str) -> {full_name, car_name}, from CAR_ORDINALS_FILE
+        self._car_ordinals_loaded = False
+        self._cars_by_name        = {}    # normalized car name -> [row dict, ...] (variants by class/type)
+        self._cars_by_ordinal     = {}    # ordinal (str) -> row dict, only for rows with Ordinal filled in
+        self._cars_hmap           = {}    # Cars tab header name -> 0-indexed column, from the same read
+        self._car_card_loaded     = False
 
     def _build_service(self):
         """Authenticate and build the Google Sheets API service."""
@@ -160,6 +179,13 @@ class SheetsWriter:
             self.check_for_new_record(race_result)
         except Exception as e:
             log.error(f"Record-check/overlay update failed (non-fatal): {e}")
+
+        # Same reasoning as check_for_new_record above - wrapped so a bug in
+        # the Car Card learning path can never block the actual Results write.
+        try:
+            self.learn_car_ordinal(race_result)
+        except Exception as e:
+            log.error(f"Car ordinal learning failed (non-fatal): {e}")
 
         self._append_result(race_result)
 
@@ -281,6 +307,227 @@ class SheetsWriter:
             os.replace(tmp_path, OVERLAY_STATE_FILE)
         except Exception as e:
             log.error(f"Failed to write overlay state: {e}")
+
+    # ============================================================
+    # Car Card overlay - see TODO.md's "Car Card Overlay" entry.
+    # Triggered by car_ordinal changing in telemetry (main.py wires this to
+    # update_car_card()), independent of race state entirely. Uses two
+    # sources of car identity: CAR_ORDINALS_FILE (a local seed/learned
+    # database mapping Forza's numeric ordinal to a car's full name and its
+    # abbreviated scoreboard name) and the Cars tab itself (for Year/MFG/
+    # Model/Tuner/Painter/Races/Wins/Win Rate). All Cars tab columns are
+    # found by header text, never hardcoded position.
+    # ============================================================
+
+    def _load_car_ordinals(self):
+        """Loads the local ordinal->{full_name, car_name} seed/learned file."""
+        try:
+            with open(CAR_ORDINALS_FILE) as f:
+                self._car_ordinals = json.load(f)
+        except FileNotFoundError:
+            self._car_ordinals = {}
+        except Exception as e:
+            log.error(f"Failed to load car ordinals file: {e}")
+            self._car_ordinals = {}
+        self._car_ordinals_loaded = True
+
+    def _save_car_ordinals(self):
+        """Writes CAR_ORDINALS_FILE back out (temp-then-rename)."""
+        try:
+            os.makedirs(os.path.dirname(CAR_ORDINALS_FILE), exist_ok=True)
+            tmp_path = CAR_ORDINALS_FILE + ".tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(self._car_ordinals, f, indent=2, sort_keys=True)
+            os.replace(tmp_path, CAR_ORDINALS_FILE)
+        except Exception as e:
+            log.error(f"Failed to save car ordinals file: {e}")
+
+    def _load_car_card_cache(self):
+        """
+        Reads the whole Cars tab into memory for Car Card lookups, keyed both
+        by Ordinal (fast path, once a row has been backfilled) and by
+        normalized Car Name (fallback path, used together with the local
+        ordinal-seed database). A wide A:ZZ range is used deliberately since
+        the exact column where user-added fields like Painter/Ordinal land
+        isn't assumed - only the header text is trusted.
+        """
+        try:
+            resp = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"{CARS_TAB}!A:ZZ"
+            ).execute()
+        except HttpError as e:
+            log.error(f"Failed to read Cars tab for Car Card: {e}")
+            self._cars_by_name = {}
+            self._cars_by_ordinal = {}
+            self._car_card_loaded = True
+            return
+
+        rows = resp.get("values", [])
+        if len(rows) < 2:
+            self._cars_by_name = {}
+            self._cars_by_ordinal = {}
+            self._car_card_loaded = True
+            return
+
+        headers = [h.strip() for h in rows[0]]
+        hmap = {h: i for i, h in enumerate(headers) if h}
+
+        required = ["Car Name", "Class", "Type"]
+        missing = [c for c in required if c not in hmap]
+        if missing:
+            log.error(f"Cars tab missing required column(s) for Car Card: {missing}")
+            self._cars_by_name = {}
+            self._cars_by_ordinal = {}
+            self._car_card_loaded = True
+            return
+
+        def cell(row, name, default=""):
+            idx = hmap.get(name)
+            if idx is None or idx >= len(row):
+                return default
+            return row[idx].strip()
+
+        by_name = defaultdict(list)
+        by_ordinal = {}
+        for sheet_row_idx, row in enumerate(rows[1:], start=2):
+            car_name = cell(row, "Car Name")
+            if not car_name:
+                continue
+            entry = {
+                "row_number": sheet_row_idx,
+                "year":       cell(row, "Year"),
+                "mfg":        cell(row, "MFG"),
+                "model":      cell(row, "Model"),
+                "car_name":   car_name,
+                "class":      cell(row, "Class"),
+                "type":       cell(row, "Type"),
+                "tuner":      cell(row, "Tuner"),
+                "painter":    cell(row, "Painter"),   # blank until the user adds this column
+                "races":      cell(row, "Races"),
+                "wins":       cell(row, "Wins"),
+                "win_rate":   cell(row, "Win Rate"),
+                "ordinal":    cell(row, "Ordinal"),   # blank until backfilled or the column exists
+            }
+            by_name[_normalize_str(car_name)].append(entry)
+            if entry["ordinal"]:
+                by_ordinal[entry["ordinal"]] = entry
+
+        self._cars_by_name = dict(by_name)
+        self._cars_by_ordinal = by_ordinal
+        self._cars_hmap = hmap
+        self._car_card_loaded = True
+        log.info(f"Loaded {sum(len(v) for v in by_name.values())} Cars tab rows for "
+                 f"Car Card ({len(by_ordinal)} with Ordinal already set)")
+
+    def update_car_card(self, ordinal, live_class):
+        """
+        Called whenever telemetry detects the selected car's ordinal changed
+        (car select, free roam, between races - not tied to a race). Resolves
+        the ordinal to a car identity and Cars-tab stats, then writes
+        car_card_state.json for the overlay. Best-effort by design: an
+        unknown ordinal or an unmatched Cars-tab row still produces a card
+        (just a sparser one) rather than doing nothing.
+        """
+        if not self._car_ordinals_loaded:
+            self._load_car_ordinals()
+        if not self._car_card_loaded:
+            self._load_car_card_cache()
+
+        ordinal_str = str(ordinal)
+        seed      = self._car_ordinals.get(ordinal_str, {})
+        full_name = seed.get("full_name")
+        car_name  = seed.get("car_name")
+
+        row = self._cars_by_ordinal.get(ordinal_str)
+        if row is None and car_name:
+            candidates = self._cars_by_name.get(_normalize_str(car_name), [])
+            if candidates:
+                # Prefer whichever tune matches telemetry's live class; the
+                # Road-vs-Dirt tiebreak (same Class, different Type) is a
+                # known open wrinkle - see TODO.md - not solved here.
+                row = next((c for c in candidates if c["class"] == live_class), candidates[0])
+
+        card = {
+            "ordinal":   ordinal_str,
+            "full_name": full_name,
+            "car_name":  car_name,
+            "known":     row is not None,
+            "year":      row["year"]     if row else "",
+            "mfg":       row["mfg"]      if row else "",
+            "model":     row["model"]    if row else "",
+            "class":     row["class"]    if row else (live_class or ""),
+            "tuner":     row["tuner"]    if row else "",
+            "painter":   row["painter"]  if row else "",
+            "races":     row["races"]    if row else "",
+            "wins":      row["wins"]     if row else "",
+            "win_rate":  row["win_rate"] if row else "",
+            "timestamp": datetime.now().isoformat()
+        }
+        self._write_car_card_state(card)
+
+    def _write_car_card_state(self, card):
+        """Writes car_card_state.json (temp-then-rename)."""
+        tmp_path = CAR_CARD_STATE_FILE + ".tmp"
+        try:
+            os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+            with open(tmp_path, "w") as f:
+                json.dump(card, f)
+            os.replace(tmp_path, CAR_CARD_STATE_FILE)
+        except Exception as e:
+            log.error(f"Failed to write car card state: {e}")
+
+    def learn_car_ordinal(self, race_result):
+        """
+        Called after every race. This is the one moment telemetry's
+        car_ordinal and Claude's OCR'd car name are both known together, so
+        it's the only place new ordinal->name knowledge can come from short
+        of the community seed file. Also backfills the Cars tab's Ordinal
+        column on the matched row if it's blank there - same self-healing
+        pattern as the Year/MFG/Model backfill in the Apps Script's
+        applyUpdates_, rather than a one-time reconciliation project.
+        """
+        ordinal = race_result.get("car_ordinal")
+        car_name = race_result.get("car")
+        if not ordinal or ordinal == "?" or not car_name:
+            return
+        ordinal_str = str(ordinal)
+
+        if not self._car_ordinals_loaded:
+            self._load_car_ordinals()
+
+        entry = self._car_ordinals.get(ordinal_str)
+        if entry is None:
+            self._car_ordinals[ordinal_str] = {"full_name": None, "car_name": car_name}
+            self._save_car_ordinals()
+        elif not entry.get("car_name"):
+            entry["car_name"] = car_name
+            self._save_car_ordinals()
+
+        if not self._car_card_loaded:
+            self._load_car_card_cache()
+        if not self._cars_hmap or "Ordinal" not in self._cars_hmap:
+            return   # "Ordinal" column doesn't exist on the sheet yet
+
+        candidates = self._cars_by_name.get(_normalize_str(car_name), [])
+        match = next((c for c in candidates if c["class"] == race_result.get("class")), None) \
+                or (candidates[0] if candidates else None)
+        if not match or match.get("ordinal"):
+            return   # no matching row, or it already has an Ordinal - nothing to do
+
+        col_letter = _column_letter(self._cars_hmap["Ordinal"])
+        try:
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"{CARS_TAB}!{col_letter}{match['row_number']}",
+                valueInputOption="RAW",
+                body={"values": [[ordinal_str]]}
+            ).execute()
+            match["ordinal"] = ordinal_str
+            self._cars_by_ordinal[ordinal_str] = match
+            log.info(f"Backfilled Ordinal={ordinal_str} for {car_name} (Cars row {match['row_number']})")
+        except HttpError as e:
+            log.error(f"Failed to backfill Ordinal for {car_name}: {e}")
 
     def update_car_stats(self):
         """

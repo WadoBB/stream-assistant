@@ -167,14 +167,19 @@ class TelemetryListener:
     Calls on_race_end(summary) only for valid completed races.
     """
 
-    def __init__(self, game_version="FH5", on_race_end=None):
+    def __init__(self, game_version="FH5", on_race_end=None, on_car_change=None):
         self.game_version       = game_version
         self.on_race_end        = on_race_end
+        self.on_car_change      = on_car_change
         self.last_race_end_time = 0
         self.last_packet_time   = None
         self.race_end_debounce  = 0
         self.race_end_start_time = None
         self._last_packet_size  = None
+        # Deliberately NOT reset by _reset_race_state() - car selection
+        # persists across races (and through free roam), so this must survive
+        # the per-race reset or every race-end would look like a car change.
+        self._last_known_ordinal = None
         self._reset_race_state()
 
     def _reset_race_state(self):
@@ -321,6 +326,18 @@ class TelemetryListener:
             log.warning(f"Field anomaly: position={position} — possible offset shift")
         if t["car_pi"] != 0 and not (100 <= t["car_pi"] <= 999):
             log.warning(f"Field anomaly: car_pi={t['car_pi']} — possible offset shift")
+
+        # -------------------------------------------------------
+        # CAR CHANGE: fires for the Car Card overlay whenever the selected
+        # car's ordinal changes - in free roam, at car select, or between
+        # races. Independent of race state entirely (checked before any
+        # race-start/race-end logic below), since car selection happens
+        # outside of a race. Ordinal 0 means no car loaded yet (e.g. the very
+        # first packets after the game starts) - not a real selection.
+        if t["car_ordinal"] != 0 and t["car_ordinal"] != self._last_known_ordinal:
+            self._last_known_ordinal = t["car_ordinal"]
+            if self.on_car_change:
+                self.on_car_change(t["car_ordinal"], t["car_class"], t["car_pi"], t["drivetrain"])
 
         # -------------------------------------------------------
         # RACE END: position == 0 AND is_race_on == 0

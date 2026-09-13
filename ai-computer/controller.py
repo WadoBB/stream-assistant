@@ -18,7 +18,8 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, send_file
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
-                     OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE)
+                     OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
+                     CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE)
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -169,6 +170,88 @@ def overlay_state():
     except Exception as e:
         log.warning(f"Could not read overlay state file: {e}")
         return jsonify({})
+
+
+@app.route("/car_card", methods=["GET"])
+def car_card_page():
+    """
+    Serves the Car Card overlay page. Separate Browser Source from /overlay -
+    this one is triggered by car_ordinal changing in telemetry (any car
+    selection, not tied to a race), not by a race result.
+    """
+    return send_file(CAR_CARD_HTML)
+
+
+@app.route("/car_card/state", methods=["GET"])
+def car_card_state():
+    """
+    Returns the current Car Card event as JSON, written by sheets_writer.py's
+    update_car_card() whenever telemetry detects a car change. Returns {} if
+    nothing has been recorded yet or the file can't be read.
+    """
+    if not os.path.exists(CAR_CARD_STATE_FILE):
+        return jsonify({})
+    try:
+        with open(CAR_CARD_STATE_FILE) as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+        log.warning(f"Could not read car card state file: {e}")
+        return jsonify({})
+
+
+@app.route("/car_card/image/<ordinal>", methods=["GET"])
+def car_card_image(ordinal):
+    """
+    Serves the car image for a given ordinal (ai-computer/overlay/car_images/
+    <ordinal>.png), falling back to CAR_CARD_DEFAULT_IMAGE if that ordinal
+    has no image yet. <ordinal> is used only to build a filename within
+    CAR_IMAGES_FOLDER, never as an arbitrary path - basename-only, and it
+    must already exist inside that folder or the fallback is served instead.
+    """
+    safe_name = os.path.basename(str(ordinal)) + ".png"
+    image_path = os.path.join(CAR_IMAGES_FOLDER, safe_name)
+    if os.path.exists(image_path):
+        return send_file(image_path)
+    if os.path.exists(CAR_CARD_DEFAULT_IMAGE):
+        return send_file(CAR_CARD_DEFAULT_IMAGE)
+    return jsonify({"status": "error", "message": "No image and no default configured"}), 404
+
+
+@app.route("/car_card/test", methods=["GET"])
+def car_card_test():
+    """
+    Manual test trigger for the Car Card - writes a fake event straight to
+    car_card_state.json. Optional query params override the canned defaults:
+    /car_card/test?full_name=...&car_name=...&year=...&mfg=...&model=...
+      &tuner=...&painter=...&races=...&wins=...&win_rate=...&ordinal=...
+    """
+    event = {
+        "ordinal":   request.args.get("ordinal", "999999"),
+        "full_name": request.args.get("full_name", "2019 Chevrolet Chevelle SS"),
+        "car_name":  request.args.get("car_name", "Chevelle SS"),
+        "known":     True,
+        "year":      request.args.get("year", "2019"),
+        "mfg":       request.args.get("mfg", "Chevrolet"),
+        "model":     request.args.get("model", "Chevelle SS"),
+        "class":     request.args.get("class", "S1"),
+        "tuner":     request.args.get("tuner", "Benny"),
+        "painter":   request.args.get("painter", "Benny"),
+        "races":     request.args.get("races", "7"),
+        "wins":      request.args.get("wins", "2"),
+        "win_rate":  request.args.get("win_rate", "0.2857"),
+        "timestamp": datetime.now().isoformat()
+    }
+    try:
+        os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+        tmp_path = CAR_CARD_STATE_FILE + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(event, f)
+        os.replace(tmp_path, CAR_CARD_STATE_FILE)
+        log.info(f"Test car card event written: {event}")
+        return jsonify({"status": "ok", "event": event})
+    except Exception as e:
+        log.error(f"Failed to write test car card event: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/overlay/test", methods=["GET"])
