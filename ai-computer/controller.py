@@ -21,7 +21,7 @@ from flask import Flask, jsonify, request, send_file, Response
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
-                     CAR_CARD_SOUND_FILE)
+                     CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 
@@ -391,6 +391,39 @@ def sync_ordinals():
         return jsonify({"status": "error", "message": "sync_ordinals.py timed out"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/car_card/lookup", methods=["GET"])
+def car_card_lookup():
+    """
+    Reads car_ordinals.json directly and reports exactly what a given
+    ordinal resolves to right now - unlike /car_card/test, which always
+    writes canned/overridable fake data and never touches the real lookup
+    file. Exists to answer "what does ordinal N actually know about it"
+    without needing to hand-inspect car_ordinals.json on this machine.
+    ?ordinal=<N> is required. Does not call the Sheets API (no Cars-tab
+    cross-reference) - same reasoning as /car_card/sync_ordinals running as
+    a subprocess: keep controller.py itself free of that dependency.
+    """
+    ordinal = request.args.get("ordinal")
+    if not ordinal:
+        return jsonify({"status": "error", "message": "ordinal query param is required"}), 400
+
+    if not os.path.exists(CAR_ORDINALS_FILE):
+        return jsonify({"status": "error", "message": f"{CAR_ORDINALS_FILE} does not exist"}), 404
+
+    try:
+        with open(CAR_ORDINALS_FILE) as f:
+            ordinals = json.load(f)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Could not read car_ordinals.json: {e}"}), 500
+
+    entry = ordinals.get(str(ordinal))
+    if entry is None:
+        return jsonify({"status": "ok", "ordinal": ordinal, "found": False,
+                         "message": "No entry for this ordinal in car_ordinals.json"})
+
+    return jsonify({"status": "ok", "ordinal": ordinal, "found": True, "entry": entry})
 
 
 @app.route("/car_card/test", methods=["GET"])

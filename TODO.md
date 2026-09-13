@@ -416,7 +416,12 @@ connection rather than never doing so until a human intervenes.
 **Still not confirmed against a real, long OBS session** - this needs
 observation over an actual multi-hour stream to know whether the watchdog
 actually eliminates manual-refresh dependency or just makes recovery
-faster/quieter.
+faster/quieter. Both overlays fired correctly immediately after this was
+deployed and the Browser Sources re-added (2026-09-12) - worth noting this
+was already the expected baseline even before the watchdog existed (fresh
+connections always worked; only long-lived ones went stale), so this alone
+doesn't yet confirm the actual fix. Real confirmation is a normal session
+where the sources are added once and never touched again for hours.
 
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through
