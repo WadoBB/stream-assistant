@@ -181,7 +181,17 @@
 
   connect();
   setInterval(() => {
-    if (Date.now() - lastActivityAt > WATCHDOG_MS) connect();
+    // Only force a fresh connection if the existing one is genuinely stuck
+    // OPEN-but-silent, or fully CLOSED - see index.html's copy of this
+    // comment for the full story: a real controller.py restart showed this
+    // watchdog repeatedly aborting a still-CONNECTING native retry attempt
+    // every ~8-11s, which can cancel a connection that was about to
+    // succeed and restart the wait from zero. Leaving a CONNECTING source
+    // alone lets the browser's own retry loop finish uninterrupted.
+    const stale = Date.now() - lastActivityAt > WATCHDOG_MS;
+    if (stale && (!source || source.readyState !== EventSource.CONNECTING)) {
+      connect();
+    }
   }, 3000);
 </script>
 

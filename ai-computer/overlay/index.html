@@ -147,7 +147,22 @@
 
   connect();
   setInterval(() => {
-    if (Date.now() - lastActivityAt > WATCHDOG_MS) connect();
+    // Only force a fresh connection if the existing one is genuinely stuck
+    // OPEN-but-silent, or fully CLOSED. If it's CONNECTING, the browser's
+    // own native retry is already in flight - confirmed via a real
+    // controller.py restart that a slow-to-reconnect attempt (Windows can
+    // take a bit to release/rebind the port) alternated ERR_ABORTED with
+    // ERR_CONNECTION_TIMED_OUT for a long stretch before finally
+    // succeeding, because this watchdog was calling connect() (which
+    // closes the in-flight EventSource) every ~8-11s regardless of its
+    // state - repeatedly cancelling a connection attempt that may have
+    // been about to succeed, and restarting the wait from zero each time.
+    // Leaving a CONNECTING source alone lets the browser's own retry loop
+    // run uninterrupted instead of fighting it.
+    const stale = Date.now() - lastActivityAt > WATCHDOG_MS;
+    if (stale && (!source || source.readyState !== EventSource.CONNECTING)) {
+      connect();
+    }
   }, 3000);
 </script>
 

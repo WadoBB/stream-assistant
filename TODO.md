@@ -454,6 +454,35 @@ connections always worked; only long-lived ones went stale), so this alone
 doesn't yet confirm the actual fix. Real confirmation is a normal session
 where the sources are added once and never touched again for hours.
 
+**2026-09-12, later same night - root cause of the recurrence found, this
+time with hard evidence, not another guess.** After a controller.py
+restart, a real Car Card page still needed a manual refresh despite the
+watchdog. Reproduced independently (not on the user's OBS/browser at all)
+by loading `/car_card` in a separate browser and watching its network log
+across a controller.py restart: the `/car_card/stream` connection cycled
+through `ERR_ABORTED` alternating with `ERR_CONNECTION_TIMED_OUT` for a
+long stretch before finally reaching `200 OK` on its own. That alternation
+was the tell - **two reconnect mechanisms were fighting each other.**
+`EventSource` already retries on a dropped connection natively, with no
+code needed; right after a server restart, a retry attempt can legitimately
+take a while to succeed (Windows doesn't always release/rebind the port
+instantly). But the watchdog (`setInterval`, checked every 3s) was calling
+`connect()` unconditionally whenever quiet for 8+ seconds - `connect()`
+calls `source.close()` on whatever's currently there, so it was aborting
+the browser's own in-progress native retry attempt and starting a brand
+new one from scratch, potentially repeatedly, each time cancelling a
+connection that might have been about to succeed. The watchdog built to
+fix the reliability problem was itself extending it.
+
+**Fix:** the watchdog now checks `source.readyState` before reconnecting -
+if it's already `CONNECTING` (a native retry in flight), leave it alone;
+only force a fresh `EventSource` if it's genuinely stuck `OPEN` (silently
+not receiving pings, the original stuck-connection case this watchdog was
+built for) or `CLOSED`. Applied identically to both `index.html` and
+`car_card.html`. Not yet re-confirmed live against a real controller.py
+restart with this fix in place - that's the next real test, not another
+manual-refresh smoke test.
+
 **This is genuinely buildable soon, unlike Car Suggester** - no blocked R&D,
 just a few Sheets/config additions and threading `car_ordinal` through
 `telemetry_listener.py` to fire on any change, not just at race start.
