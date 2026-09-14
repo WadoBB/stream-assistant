@@ -28,8 +28,8 @@
     "full_name": "1998 Ferrari F40 Competizione"
   },
   "1032": {
-    "car_name": null,
-    "full_name": "2008 Alfa Romeo 8C Competizione"
+    "car_name": "Alfa Romeo 8C",
+    "full_name": "2007 Alfa Romeo 8C Competizione"
   },
   "1034": {
     "car_name": "Toyota Celica'94",
@@ -97,7 +97,7 @@
   },
   "1104": {
     "car_name": null,
-    "full_name": "1970 Nissan 510"
+    "full_name": "1970 Datsun 510"
   },
   "1105": {
     "car_name": "AM DB5",
@@ -141,11 +141,11 @@
   },
   "1173": {
     "car_name": null,
-    "full_name": "2010 Lamborghini Gallardo LP670-4 SV"
+    "full_name": "2010 Lamborghini Murcielago LP670-4 SV"
   },
   "1175": {
     "car_name": null,
-    "full_name": "2010 Pagani Zonda R"
+    "full_name": "2009 Pagani Zonda R"
   },
   "1184": {
     "car_name": "Audi RS 6 '09",
@@ -221,7 +221,7 @@
   },
   "1282": {
     "car_name": null,
-    "full_name": "1994 Nissan 240SX"
+    "full_name": "1993 Nissan 240SX"
   },
   "1283": {
     "car_name": null,
@@ -305,7 +305,7 @@
   },
   "1369": {
     "car_name": null,
-    "full_name": "2009 Pagani Zonda Cinque"
+    "full_name": "2010 Pagani Zonda Cinque"
   },
   "1376": {
     "car_name": null,
@@ -397,7 +397,7 @@
   },
   "1493": {
     "car_name": null,
-    "full_name": "1996 BMW 850CSi"
+    "full_name": "1995 BMW 850CSi"
   },
   "1500": {
     "car_name": null,
@@ -437,7 +437,7 @@
   },
   "1537": {
     "car_name": null,
-    "full_name": "1973 Toyota Corolla SR5"
+    "full_name": "1974 Toyota Corolla SR5"
   },
   "1549": {
     "car_name": "Alfa Romeo 33S",
@@ -465,7 +465,7 @@
   },
   "1578": {
     "car_name": null,
-    "full_name": "1963 Ferrari 250 GT Lusso"
+    "full_name": "1962 Ferrari 250 GT Lusso"
   },
   "1586": {
     "car_name": "Continental '62",
@@ -545,7 +545,7 @@
   },
   "2003": {
     "car_name": null,
-    "full_name": "2013 MINI JCW GP"
+    "full_name": "2012 MINI JCW GP"
   },
   "2004": {
     "car_name": null,
@@ -753,7 +753,7 @@
   },
   "2371": {
     "car_name": null,
-    "full_name": "2016 Ferrari FXX K"
+    "full_name": "2014 Ferrari FXX K"
   },
   "2372": {
     "car_name": "Ford Coupe '32",
@@ -789,7 +789,7 @@
   },
   "2467": {
     "car_name": null,
-    "full_name": "2016 Ferrari 488 GTB"
+    "full_name": "2015 Ferrari 488 GTB"
   },
   "2468": {
     "car_name": "Dodge Charger '15",
@@ -877,7 +877,7 @@
   },
   "2542": {
     "car_name": null,
-    "full_name": "2016 Alfa Romeo Giulia"
+    "full_name": "2017 Alfa Romeo Giulia"
   },
   "2544": {
     "car_name": null,
@@ -893,7 +893,7 @@
   },
   "2551": {
     "car_name": null,
-    "full_name": "2015 Ford Pursuit Ute"
+    "full_name": "2014 Ford Pursuit Ute"
   },
   "2552": {
     "car_name": "Alumi Craft C.10",
@@ -1145,11 +1145,11 @@
   },
   "2974": {
     "car_name": null,
-    "full_name": "2018 Ferrari 812 Superfast"
+    "full_name": "2017 Ferrari 812 Superfast"
   },
   "2986": {
     "car_name": null,
-    "full_name": "2017 Mercedes-Benz Unimog"
+    "full_name": "2014 Mercedes-Benz Unimog"
   },
   "2987": {
     "car_name": null,
@@ -1237,7 +1237,7 @@
   },
   "3082": {
     "car_name": null,
-    "full_name": "2006 Maserati MC12 Corsa"
+    "full_name": "2008 Maserati MC12 Corsa"
   },
   "3087": {
     "car_name": null,
@@ -1253,7 +1253,7 @@
   },
   "3091": {
     "car_name": null,
-    "full_name": "2018 Aston Martin Vantage"
+    "full_name": "2019 Aston Martin Vantage"
   },
   "3107": {
     "car_name": null,
@@ -1292,7 +1292,7 @@
     "full_name": "2017 Ford #25 Brocky Ultra4 Bronco RTR"
   },
   "3129": {
-    "car_name": "M\u00e9gane R26.R",
+    "car_name": "Megane R26.R",
     "full_name": "2008 Renault Megane R26.R"
   },
   "3132": {
@@ -1377,7 +1377,7 @@
   },
   "3211": {
     "car_name": null,
-    "full_name": "2019 Aston Martin Vulcan AMR Pro"
+    "full_name": "2017 Aston Martin Vulcan AMR Pro"
   },
   "3212": {
     "car_name": "Zenvo TSR-S",
@@ -1425,7 +1425,7 @@
   },
   "3249": {
     "car_name": null,
-    "full_name": "2018 Formula Drift #117 599 GTB Fiorano"
+    "full_name": "2007 Formula Drift #117 599 GTB Fiorano"
   },
   "325": {
     "car_name": "Lambo Diablo SV",
@@ -1536,7 +1536,7 @@
     "full_name": "2020 Chevrolet Corvette"
   },
   "3371": {
-    "car_name": "Hurac\u00e1n EVO",
+    "car_name": "Huracan EVO",
     "full_name": "2020 Lamborghini Huracan EVO"
   },
   "3373": {
@@ -1581,7 +1581,7 @@
   },
   "3413": {
     "car_name": null,
-    "full_name": "2019 Volkswagen Golf R"
+    "full_name": "2021 Volkswagen Golf R"
   },
   "3414": {
     "car_name": "LR Defender '20",
@@ -1592,7 +1592,7 @@
     "full_name": "1995 Ferrari F50"
   },
   "3429": {
-    "car_name": null,
+    "car_name": "Ginetta G40 Jr",
     "full_name": "2019 Ginetta G40 Junior"
   },
   "343": {
@@ -1697,7 +1697,7 @@
   },
   "3543": {
     "car_name": null,
-    "full_name": "2022 Pagani Huayra R"
+    "full_name": "2021 Pagani Huayra R"
   },
   "3548": {
     "car_name": null,
@@ -1741,7 +1741,7 @@
   },
   "3594": {
     "car_name": null,
-    "full_name": "2021 Ferrari Roma"
+    "full_name": "2020 Ferrari Roma"
   },
   "3595": {
     "car_name": null,
@@ -1793,7 +1793,7 @@
   },
   "3622": {
     "car_name": null,
-    "full_name": "2019 Nissan GT-R Nismo"
+    "full_name": "2020 Nissan GT-R Nismo"
   },
   "3624": {
     "car_name": null,
@@ -2001,11 +2001,11 @@
   },
   "3774": {
     "car_name": null,
-    "full_name": "2023 Lamborghini Countach"
+    "full_name": "2021 Lamborghini Countach"
   },
   "3775": {
     "car_name": null,
-    "full_name": "2022 Lamborghini Aventador Ultimae"
+    "full_name": "2021 Lamborghini Aventador Ultimae"
   },
   "378": {
     "car_name": "Lancer MR '04",
@@ -2068,7 +2068,7 @@
     "full_name": "2005 BMW M3 E46"
   },
   "3840": {
-    "car_name": "Hurac\u00e1n Sterrato",
+    "car_name": "Huracan Sterrato",
     "full_name": "2023 Lamborghini Huracan Sterrato"
   },
   "3846": {
