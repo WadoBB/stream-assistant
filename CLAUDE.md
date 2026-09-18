@@ -228,6 +228,26 @@ Cars tab first — see TODO.md).
   rows. Telemetry's live PI resolves Class the same way race results already
   do, but if both tunes share a Class there's no signal to pick between them;
   currently just picks whichever candidate row is found first.
+- **Still recurring as of 2026-09-18, not resolved:** during a real stream
+  the Car Card fired automatically once (the first car change), then needed
+  a manual OBS refresh for every car change after that — refresh always
+  showed the right car, which rules out `update_car_card()`/the write path
+  (confirmed via `/logs`, no errors all night) and rules out a
+  client-per-origin-connection-limit theory (tested live, not the cause).
+  Points at the already-open `EventSource` going stuck again despite the
+  2026-09-12 watchdog fix, which was only ever confirmed in a plain browser
+  tab, not a real OBS session. `_sse_stream()` now logs every real push
+  (not just pings/errors) specifically so the next occurrence can be
+  diagnosed from the log instead of guessed at — see TODO.md's Car Card
+  entry for the full history before proposing another theory.
+- **`/monitor`** (`controller.py`, serving `ai-computer/overlay/monitor.html`)
+  stacks both overlays (record alert on top, Car Card below) via iframes
+  for the streamer's own second-screen viewing — not an OBS Browser Source
+  itself, just a way to see live whether the overlays actually fired.
+  `gaming-pc/open_stream_monitor.bat` opens it as a small positioned window
+  for a narrow secondary display (built for a Corsair Xeneon Edge run in
+  portrait); the window position/size in that script are placeholder values
+  pending confirmation against the user's real monitor layout.
 
 ## Network Share (Screenshots)
 The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.

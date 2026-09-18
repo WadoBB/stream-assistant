@@ -146,6 +146,34 @@ same race, producing a second identical entry.
 telemetry.log timestamps to confirm the pause theory. See `telemetry_listener.py`
 `_handle_race_end` and the packet timeout path.
 
+### Screenshot Read Fails with Permission Denied — new 2026-09-16
+Found while investigating a missing-result report (same session as the photo/promo
+false-capture note above). `stream_assistant.log`:
+```
+[ERROR] Failed to read screenshot C:\StreamAssistant\ai-computer\captures\scoreboard_2026-0916-192433.png: [Errno 13] Permission denied: '...'
+[WARNING] Extraction failed - moved for review: scoreboard_2026-0916-192433.png
+```
+This is **not** a false capture — opened the saved image in
+`ai-computer/captures/processed/scoreboard_2026-0916-192433.png` and it's a
+completely valid, fully-legible scoreboard (Quick Lap Test, Eclipse GSX, position
+3, 01:09.686). The result was lost purely because the read failed, moved to
+`processed/` alongside the genuine false-captures, and never retried.
+
+**Leading hypothesis:** a Windows file-locking race — something (SMB finishing the
+gaming PC's rename-into-place, antivirus scanning the new file, or similar) still
+had the file open/locked at the exact moment `results_extractor.py` tried to read
+it. The temp-then-rename pattern (see "Race Condition Fix" in CLAUDE.md) prevents
+reading a *partially written* file but doesn't guarantee nothing else holds a
+transient lock on it immediately after the rename completes.
+
+**Not yet fixed.** Possible directions: retry the read once or twice with a short
+backoff before giving up, and/or log a distinct, obviously-different message for
+this case vs. a genuine false capture so the two don't look identical in
+`processed/` (right now both end up as an unlabeled PNG with no record of *why*
+it failed, unless the log is checked at the time). Because the file itself is
+intact and unmodified, a race lost this way is also manually recoverable after
+the fact — the image just needs to be re-run through extraction by hand.
+
 ### Pause Behavior — Telemetry Dropout
 Long in-game pauses cause the telemetry stream to go silent, triggering a false
 race-end via the 3-second packet timeout. This is the leading cause of duplicate
@@ -166,6 +194,53 @@ from them so they fail and move to processed instead of being deleted.
 (e.g. Claude returns a recognizable failure signal vs. a JSON parse error), or
 tighten the yellow/green banner detection to reduce false triggers in the first place.
 Be careful — a previous attempt to tighten banner detection broke normal captures.
+
+**2026-09-16 — new false-capture variant confirmed, not the pause-menu case
+described above.** Investigating a user report of a missing Nissan Z NISMO
+result on FH6, `stream_assistant.log` (pulled remotely via `/logs`, see
+"Cross-Machine Development" in CLAUDE.md) showed two extractions in the same
+~15-minute window failing with `Claude extraction successful` never
+appearing — Claude correctly told them apart from a real scoreboard
+(`"This image does not show a race results scoreboard... Forza Horizon
+Festival photo/promo challenge progress screen"`), not a JSON-parse crash on
+a plausible-looking response. Opened both saved images in
+`ai-computer/captures/processed/` (`scoreboard_2026-0916-191851.png`,
+`scoreboard_2026-0916-193201.png`) and confirmed: both are the **post-race
+"Discover Japan" / "Horizon Festival" photo-mode reward screen**, not a pause
+menu. Both real races these belonged to finished and were correctly logged
+by telemetry (`RACE COMPLETE`) — the scoreboard banner detector just never
+found the actual scoreboard before the game had already advanced to this
+photo/promo screen, so `capture_agent.py` grabbed whatever was on screen at
+detection time instead. In one case (`193201`) the gaming-PC log shows the
+scoreboard wasn't detected until 13 seconds after the race-end trigger, well
+above this session's usual ~1-2s — consistent with the player already having
+navigated past the scoreboard by the time detection caught up. Both races
+were on the very short "Quick Lap Test" track, which may give less on-screen
+time at the scoreboard before auto-advancing than a normal multiplayer race.
+No fix attempted yet — same caution about not touching banner detection
+blind applies. A possible angle that doesn't touch detection at all: treat
+Claude's plain-English "this is not a scoreboard" response as an expected,
+loggable outcome distinct from a real extraction error, so these don't read
+as crashes.
+
+**Root cause confirmed by the user, same day:** it's not a detection-timing
+bug — the user stops and takes photos during/right after races, which is
+exactly what lands the Discover Japan/Horizon Festival photo screen on
+screen when the scoreboard detector fires. **It is not safe to pull over and
+take photos mid-race**, so the user is going to stop doing this — expect
+this specific false-capture variant to become rare going forward without any
+code change. Leave banner detection alone; this doesn't need the fix ideas
+above.
+
+**Follow-up same day — the user's own risk model was backwards.** They'd
+long assumed dismissing the scoreboard too *fast* (hitting continue the
+instant the race ends) was the danger and hesitated because of it. Capture
+is actually fast enough that this has never caused a miss. The real risk
+identified above generalizes beyond photos specifically: **any pause after
+the race ends — photos, the pause menu, or rewinding — before dismissing the
+scoreboard** is what risks a false capture, not dismissing it quickly. No
+code implication; noting this so the user's own habit (dismiss promptly,
+avoid lingering) is understood as the actual mitigation, not a risk.
 
 ---
 
@@ -623,6 +698,86 @@ wasn't the cause of any manual-refresh incident reported so far.
 just a few Sheets/config additions and threading `car_ordinal` through
 `telemetry_listener.py` to fire on any change, not just at race start.
 
+**2026-09-18 - recurred live, worse pattern than anything above, still not
+fixed.** During an actual multi-hour stream, the Car Card fired
+automatically on the very first car change of the session, then required a
+manual OBS Browser Source refresh for every car change after that -
+refresh always then showed the correct car (confirmed by the user
+directly - important, since it rules out the update/write path as the
+cause: `update_car_card()` logged zero errors all night and its last write
+matched the last car selected exactly). This also ruled out a theory raised
+mid-investigation that repeated manual refreshes might exhaust the
+browser's per-origin connection limit (Chromium/CEF caps at 6 concurrent
+connections per host on HTTP/1.1) - a live test reloading `/car_card`
+seven times in a row against the real controller.py showed every reload
+getting the correct current state instantly, no queuing. That's not what
+happened live: the failure showed up on the very first automatic push
+after the very first success, before any refresh had occurred, so it
+points back at the already-open `EventSource` going stuck and the
+2026-09-12 watchdog fix (readyState check, see above) not actually
+catching/recovering it in the real OBS environment - only confirmed
+working in "a separate browser" per that entry's own caveat, never in a
+real long OBS session until now.
+
+**Not yet fixed - diagnostic added instead of guessing at another fix.**
+`_sse_stream()` in `controller.py` only ever logged pings and errors; a
+successful push was invisible in the log, so there was no way to tell
+after the fact whether the server actually pushed the update and the
+client failed to render it, or the generator itself silently stalled and
+never pushed at all. Added a `log.info(...)` for every real (non-ping)
+push, naming the state file and the pushed data. Next time this happens,
+check the controller log against `car_card_state.json`'s timestamp for the
+car that didn't show: if the push was logged, the bug is client-side
+(stuck connection/watchdog); if it wasn't, the generator itself is the
+problem. Deployed in commit `7ff88c6` - needs a `controller.py` restart on
+the AI Computer to take effect, not yet confirmed against a real stream.
+
+**Also added, same commit:** `/monitor` (both overlays stacked via
+iframes, `ai-computer/overlay/monitor.html`) and
+`gaming-pc/open_stream_monitor.bat` to open it as a small positioned
+window on a secondary display (built for a Corsair Xeneon Edge run in
+portrait) - lets the user watch both overlays live while streaming instead
+of only finding out they didn't fire after the fact. The window
+position/size in the `.bat` file are placeholder values (assumes the
+Xeneon Edge sits right of a 1920x1080 primary at Y=0) - not yet confirmed
+against the user's actual monitor layout.
+
+### Channel Command to Trigger Car Card — idea 2026-09-15
+Let a viewer chat command (or channel-point redemption) re-fire the Car Card
+overlay for whichever car is currently selected — a viewer-interaction hook
+on top of the Car Card feature above, not a new data path. The hard part
+(telemetry → ordinal → Sheets lookup → render) already exists; this only
+needs a trigger source and a way to fire it.
+
+**User is running Streamerbot already — wire in through that rather than
+building a standalone Twitch chat bot.** Streamerbot already handles the
+Twitch/chat-command/channel-point-redemption side (including auth, cooldowns,
+permission levels) and can call an arbitrary HTTP endpoint as an action, so
+the only new code needed here is on the `controller.py` side:
+
+- A new endpoint, e.g. `GET /car_card/trigger` — unlike `/car_card/test`
+  (which can inject arbitrary fake data for layout testing), this should
+  fire the overlay using whatever car is *actually* currently selected
+  (the same ordinal `telemetry_listener.py` already tracks as
+  `_last_known_ordinal`), not a param-supplied one — the whole point is
+  "show me my current car again," not "show me an arbitrary car."
+- A short server-side cooldown on this endpoint specifically, independent of
+  whatever cooldown Streamerbot's own command config applies — a chat
+  command reaching the server at all (even once past Streamerbot's cooldown)
+  shouldn't be able to spam-refire the on-stream flash animation back to
+  back.
+- On the Streamerbot side: a Command action (or Twitch channel-point
+  redemption action) with an HTTP Request sub-action pointed at
+  `http://192.168.137.230:5000/car_card/trigger` — no tunnel/port-forwarding
+  needed since Streamerbot presumably already runs on a machine with LAN
+  access to the AI Computer, same as the Stream Deck's existing `/toggle`
+  calls.
+
+**Not yet scoped:** whether to gate this to mods only vs. any viewer (a
+Streamerbot-side permission setting, not a code change here), and whether a
+redemption-based trigger should have its own distinct cooldown from a
+chat-command-based one if both end up calling the same endpoint.
+
 ### M (Meta) Flag — Best by Track+Class Exclusion — considered, deferred 2026-09-12
 `identifyYWinners_` in `forza_car_updater.gs` excludes `M`-flagged cars
 entirely from Y-ranking (`if (s.car.fav === 'M') continue;`), which means an
@@ -835,6 +990,15 @@ Drag races at the highest class finish in ~11-17 seconds, well under the 30-seco
 minimum race duration (`MIN_RACE_DURATION_SECONDS` in `telemetry_listener.py`).
 Accepted for personal use — drag racing is rare. See README for fix details if
 this ever needs to change.
+
+**2026-09-16 — same 30s floor is now also hitting a non-drag track regularly.**
+While investigating a missing-result report, `stream_assistant.log` showed 4 of
+~17 race-end events in one ~24-minute session silently discarded as "too short"
+(`10.8s`, `6.0s`, `23.0s`, `27.7s`) — all on the "Quick Lap Test" track, which
+apparently often finishes well under 30 seconds even outside drag mode. The
+original "rare, drag-only" framing above may not hold for however this track is
+actually being used now. No fix made — flagging in case the 30s floor needs
+revisiting for short non-drag tracks too, not just the drag-race case.
 
 ### False Capture on Quit Race
 Quitting mid-race can occasionally produce a bogus result row if pause menu UI
