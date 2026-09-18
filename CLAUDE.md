@@ -244,9 +244,11 @@ Cars tab first — see TODO.md).
   stacks both overlays (record alert on top, Car Card below) via iframes
   for the streamer's own second-screen viewing — not an OBS Browser Source
   itself, just a way to see live whether the overlays actually fired.
-  `gaming-pc/open_stream_monitor.bat` opens it as a small positioned window
-  for a narrow secondary display (built for a Corsair Xeneon Edge run in
-  portrait); the window position/size in that script are placeholder values
+  `ai-computer/open_stream_monitor.bat` opens it as a small positioned
+  window for a narrow secondary display (built for a Corsair Xeneon Edge
+  attached to the AI Computer, run in portrait) — runs on the AI Computer
+  itself (same machine as `controller.py`, uses `localhost`), not the
+  gaming PC. The window position/size in that script are placeholder values
   pending confirmation against the user's real monitor layout.
 
 ## Network Share (Screenshots)

@@ -734,11 +734,14 @@ the AI Computer to take effect, not yet confirmed against a real stream.
 
 **Also added, same commit:** `/monitor` (both overlays stacked via
 iframes, `ai-computer/overlay/monitor.html`) and
-`gaming-pc/open_stream_monitor.bat` to open it as a small positioned
-window on a secondary display (built for a Corsair Xeneon Edge run in
-portrait) - lets the user watch both overlays live while streaming instead
-of only finding out they didn't fire after the fact. The window
-position/size in the `.bat` file are placeholder values (assumes the
+`ai-computer/open_stream_monitor.bat` to open it as a small positioned
+window on a secondary display (built for a Corsair Xeneon Edge attached to
+the AI Computer, run in portrait) - lets the user watch both overlays live
+while streaming instead of only finding out they didn't fire after the
+fact. Runs on the AI Computer itself (same machine as `controller.py`,
+uses `localhost`) - moved there from an initial gaming-pc placement, which
+was wrong since the Xeneon Edge is actually attached to the AI Computer.
+The window position/size in the `.bat` file are placeholder values (assumes the
 Xeneon Edge sits right of a 1920x1080 primary at Y=0) - not yet confirmed
 against the user's actual monitor layout.
 

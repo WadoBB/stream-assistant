@@ -1,9 +1,13 @@
 @echo off
 :: =============================================================
 :: Stream Assistant - Personal Monitor Window
+:: Runs on the AI COMPUTER (same machine as controller.py) since
+:: that's where the Corsair Xeneon Edge is attached - uses
+:: localhost rather than the LAN IP for that reason.
+::
 :: Opens /monitor (both overlays stacked) in a small chromeless
 :: window, sized/positioned for a narrow secondary display like
-:: the Corsair Xeneon Edge run in portrait (720 wide x 2560 tall).
+:: the Xeneon Edge run in portrait (720 wide x 2560 tall).
 ::
 :: PLACEHOLDER POSITION - X/Y below assume the Xeneon Edge sits
 :: immediately to the right of a 1920x1080 primary display at
@@ -16,7 +20,7 @@ set WIN_X=1920
 set WIN_Y=0
 set WIN_W=720
 set WIN_H=2560
-set MONITOR_URL=http://192.168.137.230:5000/monitor
+set MONITOR_URL=http://localhost:5000/monitor
 
 :: Prefer Brave (Chromium-based - reliable --window-position/--window-size
 :: in --app mode, no address bar/tabs). Checked both per-user and
