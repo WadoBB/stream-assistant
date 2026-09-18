@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stream Assistant Monitor</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #0b0d14;
+    overflow: hidden;
+  }
+
+  #stack {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  iframe {
+    width: 100%;
+    height: 50%;
+    border: none;
+    border-bottom: 1px solid #222;
+  }
+</style>
+</head>
+<body>
+
+<!--
+  Personal monitoring view, not an OBS source - both overlay pages still
+  render with their own transparent backgrounds (unchanged, since OBS
+  Browser Sources point at /overlay and /car_card directly, not here), this
+  page just gives them a dark background so they're visible on a plain
+  monitor. Stacked top/bottom for a narrow vertical display like the
+  Xeneon Edge run in portrait - see gaming-pc/open_stream_monitor.bat.
+-->
+<div id="stack">
+  <iframe src="/overlay"></iframe>
+  <iframe src="/car_card"></iframe>
+</div>
+
+</body>
+</html>

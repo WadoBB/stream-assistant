@@ -21,7 +21,7 @@ from flask import Flask, jsonify, request, send_file, Response
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
-                     CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE)
+                     CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE, MONITOR_HTML)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 SYNC_CAR_NAMES_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_car_names_from_sheet.py"
@@ -106,6 +106,17 @@ def _sse_stream(state_file_path):
                     last_mtime = mtime
                     with open(state_file_path) as f:
                         data = f.read()
+                    # Ordinary pings/errors were already logged, but a
+                    # successful push never was - meaning "did the server
+                    # actually see this car change and push it" was
+                    # unanswerable after the fact. Logging every real push
+                    # (not pings) turns "the card didn't fire" into a
+                    # yes/no on which side of the pipe the failure is: if
+                    # this line is missing for a car change that's in
+                    # car_card_state.json, the generator itself stalled;
+                    # if it's present, the break is client-side (stuck
+                    # EventSource/watchdog not rendering it).
+                    log.info(f"SSE push: {os.path.basename(state_file_path)} -> {data}")
                     yield f"data: {data}\n\n"
                 else:
                     # A NAMED event, not a bare SSE comment - visible to the
@@ -297,6 +308,17 @@ def overlay_stream():
     /overlay/test) and as a one-shot check independent of the live stream.
     """
     return Response(_sse_stream(OVERLAY_STATE_FILE), mimetype="text/event-stream")
+
+
+@app.route("/monitor", methods=["GET"])
+def monitor_page():
+    """
+    Serves the personal monitor dashboard (both overlays stacked via
+    iframes) - not an OBS Browser Source, just a convenience view for a
+    second screen. See config.py's MONITOR_HTML comment and
+    gaming-pc/open_stream_monitor.bat.
+    """
+    return send_file(MONITOR_HTML)
 
 
 @app.route("/car_card", methods=["GET"])

@@ -46,6 +46,17 @@ CAR_IMAGES_FOLDER       = r"C:\StreamAssistant\ai-computer\overlay\car_images"
 CAR_CARD_DEFAULT_IMAGE  = r"C:\StreamAssistant\ai-computer\overlay\car_images\default_shadow.svg"
 CAR_CARD_SOUND_FILE     = r"C:\StreamAssistant\ai-computer\overlay\rev.mp3"
 
+# --- Personal monitor dashboard (not an OBS source) ---
+# Stacks both overlay pages (record alert on top, car card below) in one
+# page via iframes, for the streamer's own second-monitor viewing - not
+# meant to be captured as a Browser Source itself (both pages still render
+# with their own transparent backgrounds; MONITOR_HTML just gives them a
+# dark background to be visible outside OBS). controller.py serves it at
+# /monitor. See gaming-pc/open_stream_monitor.bat for launching it sized
+# and positioned for a narrow secondary display (e.g. Corsair Xeneon Edge
+# run in portrait).
+MONITOR_HTML            = r"C:\StreamAssistant\ai-computer\overlay\monitor.html"
+
 # Local seed/learned database mapping Forza's internal car_ordinal to a car's
 # full name (Year+MFG+Model, from a community FH6 ordinal list, seeded once -
 # see TODO.md's "Car Card Overlay" entry) and its abbreviated scoreboard name
