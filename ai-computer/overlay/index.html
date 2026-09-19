@@ -164,6 +164,28 @@
       connect();
     }
   }, 3000);
+
+  // Periodic self-refresh: OBS's embedded browser is an older, often
+  // outdated Chromium build with a long-standing, unresolved upstream bug
+  // where a Browser Source's connection can silently stop delivering
+  // updates with no visible error - confirmed 2026-09-18 by running the
+  // exact same page in a real browser (the /monitor dashboard) at 100%
+  // reliability the same night this went stale in OBS. There's no
+  // permanent fix from OBS itself (GitHub issue closed "not planned" -
+  // see TODO.md), so instead of only recovering when a human notices and
+  // manually refreshes the Browser Source, force a full reload on a fixed
+  // timer so it self-heals unattended. Skips the reload while an alert is
+  // actively showing so it never cuts one off mid-display - just checks
+  // again shortly after instead.
+  const SELF_REFRESH_MS = 10 * 60 * 1000;
+  function selfRefresh() {
+    if (document.getElementById('record-alert').classList.contains('show')) {
+      setTimeout(selfRefresh, 2000);
+    } else {
+      location.reload();
+    }
+  }
+  setTimeout(selfRefresh, SELF_REFRESH_MS);
 </script>
 
 </body>

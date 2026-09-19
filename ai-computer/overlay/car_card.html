@@ -193,6 +193,24 @@
       connect();
     }
   }, 3000);
+
+  // Periodic self-refresh - see index.html's copy of this comment for the
+  // full story. OBS's embedded browser has a long-standing, unresolved
+  // upstream bug where a Browser Source's connection can silently stop
+  // delivering updates with no visible error; there's no permanent fix
+  // from OBS itself, so this forces a full reload on a fixed timer to
+  // self-heal unattended instead of waiting on a manual refresh. Skips the
+  // reload while the card is actively showing so it never cuts one off
+  // mid-display - just checks again shortly after instead.
+  const SELF_REFRESH_MS = 10 * 60 * 1000;
+  function selfRefresh() {
+    if (document.getElementById('car-card').classList.contains('show')) {
+      setTimeout(selfRefresh, 2000);
+    } else {
+      location.reload();
+    }
+  }
+  setTimeout(selfRefresh, SELF_REFRESH_MS);
 </script>
 
 </body>

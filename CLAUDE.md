@@ -160,6 +160,13 @@ the cached Best by Track+Class time for that (Track, Class). Added
   noticing a stall and reconnecting — not the primary delivery path the way
   polling was — so even throttled it still eventually recovers instead of
   requiring a human to refresh the Browser Source.
+- **Periodic self-refresh** (added 2026-09-18, see the Car Card section
+  below for the full root-cause story): the watchdog above didn't fully
+  solve manual-refresh dependency because the underlying cause turned out
+  to be a known, unfixable-from-our-side OBS bug, not this page's logic —
+  `index.html` now reloads itself (`location.reload()`) every 10 minutes
+  (skipped while an alert is actively showing) so it self-heals unattended
+  instead of waiting on a human to notice and refresh.
 - Plays `ai-computer/overlay/cheer.mp3` (served at `/overlay/cheer.mp3`) the
   moment the alert flashes in. OBS Browser Sources generally allow audio
   autoplay without a prior user gesture (this is how every existing
@@ -228,18 +235,26 @@ Cars tab first — see TODO.md).
   rows. Telemetry's live PI resolves Class the same way race results already
   do, but if both tunes share a Class there's no signal to pick between them;
   currently just picks whichever candidate row is found first.
-- **Still recurring as of 2026-09-18, not resolved:** during a real stream
-  the Car Card fired automatically once (the first car change), then needed
-  a manual OBS refresh for every car change after that — refresh always
-  showed the right car, which rules out `update_car_card()`/the write path
-  (confirmed via `/logs`, no errors all night) and rules out a
-  client-per-origin-connection-limit theory (tested live, not the cause).
-  Points at the already-open `EventSource` going stuck again despite the
-  2026-09-12 watchdog fix, which was only ever confirmed in a plain browser
-  tab, not a real OBS session. `_sse_stream()` now logs every real push
-  (not just pings/errors) specifically so the next occurrence can be
-  diagnosed from the log instead of guessed at — see TODO.md's Car Card
-  entry for the full history before proposing another theory.
+- **Root cause identified 2026-09-18: this is an OBS bug, not ours.**
+  Live-tested both overlays during a real stream: 100% reliable the entire
+  session on `/monitor` (a real Brave browser window), but both still
+  needed an occasional manual OBS refresh on the actual Browser Sources —
+  same server, same SSE endpoints, same unmodified page code, different
+  outcome purely based on which browser rendered it. Confirmed via research
+  this is a known, long-standing, **unresolved** upstream OBS issue
+  ("browser source stops updating, only a manual refresh fixes it" —
+  reported for years on OBS Forums/GitHub, flagship issue closed "not
+  planned"), most likely because OBS's Browser Source runs a bundled
+  CEF/Chromium build that lags well behind a real current browser. No
+  permanent fix exists from OBS's side. **Mitigation:** both `index.html`
+  and `car_card.html` now self-refresh (`location.reload()`) on a fixed
+  10-minute timer (skipped while actively showing, so it never cuts one off
+  mid-display) — converts "stale until a human notices" into "self-heals
+  within ~10 minutes unattended." Also worth trying: toggling
+  `OBS Settings > Advanced > Browser Source Hardware Acceleration` (either
+  direction — reports go both ways) and keeping OBS itself up to date. See
+  TODO.md's Car Card entry for the full history/sources before
+  re-investigating this as if it were still an open mystery.
 - **`/monitor`** (`controller.py`, serving `ai-computer/overlay/monitor.html`)
   stacks both overlays (record alert on top, Car Card below) via iframes
   for the streamer's own second-screen viewing — not an OBS Browser Source

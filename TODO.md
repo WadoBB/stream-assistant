@@ -745,6 +745,41 @@ The window position/size in the `.bat` file are placeholder values (assumes the
 Xeneon Edge sits right of a 1920x1080 primary at Y=0) - not yet confirmed
 against the user's actual monitor layout.
 
+**2026-09-18, later same night - root cause isolated to OBS itself, not our
+code.** Live-tested both overlays during an actual stream: 100% reliable on
+the `/monitor` dashboard (a real Brave browser window) the entire session,
+but both needed a manual OBS refresh a few times each on the actual Browser
+Sources, with no pattern to when. Since the exact same server, same SSE
+endpoints, and same unmodified page code ran flawlessly in one context and
+not the other, the difference is OBS's Browser Source itself, not
+`_sse_stream()`, the watchdog, or the write path.
+
+Confirmed via research this is a known, long-standing, **unresolved**
+upstream OBS issue - "browser source stops updating after a while, only a
+manual refresh fixes it" is reported repeatedly on OBS Forums and GitHub
+across many overlay types (StreamLabs chatbox, Twitch alerts, custom
+pages), with the flagship GitHub issue closed **"not planned."** An OBS
+moderator's own explanation: OBS's Browser Source is "just an embedded
+Chrome instance" running a **bundled CEF/Chromium build that lags well
+behind a real current browser** - exactly consistent with Brave (fully
+current) never missing an event while OBS's older engine did.
+
+**Mitigation added (no permanent fix exists from OBS's side):** both
+`index.html` and `car_card.html` now self-refresh (`location.reload()`) on
+a fixed 10-minute timer, skipping the reload if the alert/card is actively
+showing so it never cuts one off mid-display. This doesn't fix OBS's bug,
+but converts "silently stale until a human notices and refreshes" into
+"self-heals within at most ~10 minutes unattended." Not yet confirmed
+against a real multi-hour stream.
+
+**Also worth trying, not yet tested:** toggling `OBS Settings > Advanced >
+Browser Source Hardware Acceleration` (either direction, depending on
+GPU/driver - reports go both ways) is the most commonly cited fix for this
+exact symptom across OBS forums and StreamElements/Streamlabs' own
+troubleshooting docs. Also worth keeping OBS itself up to date
+(`Help > Check for Updates` in OBS Studio) since CEF/Chromium bundling is
+under active improvement upstream.
+
 ### Channel Command to Trigger Car Card — idea 2026-09-15
 Let a viewer chat command (or channel-point redemption) re-fire the Car Card
 overlay for whichever car is currently selected — a viewer-interaction hook
