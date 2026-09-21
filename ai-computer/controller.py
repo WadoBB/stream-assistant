@@ -675,6 +675,43 @@ def car_card_test():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/car_card/trigger", methods=["GET"])
+def car_card_trigger():
+    """
+    Re-fires the Car Card overlay for whichever car is ACTUALLY currently
+    selected - built for a viewer chat command / channel-point redemption
+    via Streamerbot (see TODO.md's "Channel Command to Trigger Car Card"),
+    not for testing. Unlike /car_card/test, this never accepts an ordinal
+    or any override data; it just re-timestamps the existing
+    car_card_state.json (already the resolved result of the last real car
+    change) and lets _sse_stream() pick up the mtime change normally - no
+    Sheets API call needed, since the data was already resolved when the
+    car was actually selected. Rejects with 404 if no car has been
+    selected yet this session (car_card_state.json doesn't exist).
+
+    Deliberately no cooldown/rate-limit here - the user wants that
+    controlled entirely from Streamerbot's own command cooldown setting,
+    not duplicated/hardcoded in this code. This endpoint always fires
+    immediately when called.
+    """
+    if not os.path.exists(CAR_CARD_STATE_FILE):
+        return jsonify({"status": "error", "message": "No car selected yet this session"}), 404
+
+    try:
+        with open(CAR_CARD_STATE_FILE) as f:
+            card = json.load(f)
+        card["timestamp"] = datetime.now(timezone.utc).isoformat()
+        tmp_path = CAR_CARD_STATE_FILE + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(card, f)
+        os.replace(tmp_path, CAR_CARD_STATE_FILE)
+        log.info(f"Car Card trigger fired (viewer command): {card}")
+        return jsonify({"status": "ok", "event": card})
+    except Exception as e:
+        log.error(f"Failed to fire Car Card trigger: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/overlay/test", methods=["GET"])
 def overlay_test():
     """

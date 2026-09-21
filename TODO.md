@@ -780,41 +780,46 @@ troubleshooting docs. Also worth keeping OBS itself up to date
 (`Help > Check for Updates` in OBS Studio) since CEF/Chromium bundling is
 under active improvement upstream.
 
-### Channel Command to Trigger Car Card — idea 2026-09-15
-Let a viewer chat command (or channel-point redemption) re-fire the Car Card
-overlay for whichever car is currently selected — a viewer-interaction hook
-on top of the Car Card feature above, not a new data path. The hard part
-(telemetry → ordinal → Sheets lookup → render) already exists; this only
-needs a trigger source and a way to fire it.
+### Channel Command to Trigger Car Card — chat command built 2026-09-20, channel points deferred
+Let a viewer chat command re-fire the Car Card overlay for whichever car is
+currently selected — a viewer-interaction hook on top of the Car Card
+feature, not a new data path.
 
-**User is running Streamerbot already — wire in through that rather than
-building a standalone Twitch chat bot.** Streamerbot already handles the
-Twitch/chat-command/channel-point-redemption side (including auth, cooldowns,
-permission levels) and can call an arbitrary HTTP endpoint as an action, so
-the only new code needed here is on the `controller.py` side:
+**Built:** `GET /car_card/trigger` on `controller.py` — re-timestamps the
+existing `car_card_state.json` (the already-resolved result of the last real
+car change) and lets `_sse_stream()` pick up the mtime change normally. No
+Sheets API call, no ordinal/override params (unlike `/car_card/test` — the
+whole point is "show me my current car again," not an arbitrary one), 404s
+if no car has been selected yet this session. **Deliberately no
+cooldown/rate-limit in this code** — the user wants that controlled entirely
+from Streamerbot's Command Global/User Cooldown settings, not duplicated in
+Python.
 
-- A new endpoint, e.g. `GET /car_card/trigger` — unlike `/car_card/test`
-  (which can inject arbitrary fake data for layout testing), this should
-  fire the overlay using whatever car is *actually* currently selected
-  (the same ordinal `telemetry_listener.py` already tracks as
-  `_last_known_ordinal`), not a param-supplied one — the whole point is
-  "show me my current car again," not "show me an arbitrary car."
-- A short server-side cooldown on this endpoint specifically, independent of
-  whatever cooldown Streamerbot's own command config applies — a chat
-  command reaching the server at all (even once past Streamerbot's cooldown)
-  shouldn't be able to spam-refire the on-stream flash animation back to
-  back.
-- On the Streamerbot side: a Command action (or Twitch channel-point
-  redemption action) with an HTTP Request sub-action pointed at
-  `http://192.168.137.230:5000/car_card/trigger` — no tunnel/port-forwarding
-  needed since Streamerbot presumably already runs on a machine with LAN
-  access to the AI Computer, same as the Stream Deck's existing `/toggle`
-  calls.
+**Real bug this surfaced and fixed:** `car_card.html` deduped incoming
+events on `ordinal`, which silently swallowed any re-trigger of the *same*
+car (first seen 2026-09-18 testing repeated `/car_card/test` calls with the
+same canned ordinal, then would have completely broken this feature).
+Switched the dedup key to `timestamp` instead — every real write always gets
+a fresh timestamp, so a genuine re-trigger still shows while a reconnect's
+echo of already-shown state (identical timestamp) is still correctly
+ignored.
 
-**Not yet scoped:** whether to gate this to mods only vs. any viewer (a
-Streamerbot-side permission setting, not a code change here), and whether a
-redemption-based trigger should have its own distinct cooldown from a
-chat-command-based one if both end up calling the same endpoint.
+**Streamerbot wiring (user-side, not code):** an Action containing a
+`Core > Network > Fetch URL` sub-action (GET-only, which is all this
+endpoint needs) pointed at `http://192.168.137.230:5000/car_card/trigger`,
+attached to a Command (e.g. `!car`) with cooldowns/permissions set in the
+Command's own config. Sidebar entry for the Actions editor is labeled
+**"Actions & Queues"**, not plain "Actions" — tripped up finding it once
+already, worth remembering if this comes up again.
+
+**Channel-point redemption path — deferred, not built:** same idea via a
+Twitch Reward Redemption trigger instead of/alongside the chat command.
+Explicitly not worth the setup effort until viewer count is high enough for
+channel points to matter. The Reward Redemption trigger has no
+Streamerbot-side cooldown of its own — cooldown there would come from
+Twitch's native reward settings (`globalCooldown`/`maxPerUserPerStream`),
+set when the reward is created. Revisit once viewership justifies it; wiring
+is otherwise identical (same Action, new trigger).
 
 ### M (Meta) Flag — Best by Track+Class Exclusion — considered, deferred 2026-09-12
 `identifyYWinners_` in `forza_car_updater.gs` excludes `M`-flagged cars

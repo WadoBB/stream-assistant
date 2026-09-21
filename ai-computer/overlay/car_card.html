@@ -98,7 +98,7 @@
   const MAX_AGE_MS = 60 * 1000;
   const SHOW_MS = 10000;
 
-  let lastOrdinal = null;
+  let lastTimestamp = null;
   let hideTimer = null;
 
   function formatWinRate(v) {
@@ -168,9 +168,17 @@
         return;
       }
 
-      if (event && event.ordinal && event.ordinal !== lastOrdinal) {
+      // Dedup on timestamp, not ordinal - a viewer re-firing /car_card/trigger
+      // (see controller.py) legitimately re-shows the SAME car with a fresh
+      // timestamp, which an ordinal-keyed dedup would silently swallow
+      // (confirmed 2026-09-18 testing repeated /car_card/test calls with the
+      // same canned ordinal). Every real write always gets a brand-new
+      // timestamp, so this still correctly ignores a reconnect's echo of
+      // already-shown state (same timestamp as last time) without blocking
+      // a genuine re-trigger of the current car.
+      if (event && event.timestamp && event.timestamp !== lastTimestamp) {
         const ageMs = Date.now() - new Date(event.timestamp).getTime();
-        lastOrdinal = event.ordinal;
+        lastTimestamp = event.timestamp;
         if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
           showCard(event);
         }

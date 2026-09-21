@@ -221,7 +221,14 @@ Cars tab first — see TODO.md).
   `/car_card/image/<ordinal>` (falls back to
   `ai-computer/overlay/car_images/default_shadow.svg` if that ordinal has no
   image — images are per-user content, not something this codebase can
-  source itself), and `/car_card/test` for manual triggering.
+  source itself), `/car_card/test` for manual triggering, and
+  `/car_card/trigger` for a viewer chat command (built 2026-09-20, wired
+  through Streamerbot's `Core > Network > Fetch URL` sub-action — see
+  TODO.md). `/trigger` only re-timestamps the existing
+  `car_card_state.json` for whichever car is *actually* currently
+  selected — no ordinal/override params like `/test` takes, and
+  deliberately no cooldown in this code (that's controlled entirely from
+  Streamerbot's Command cooldown settings, by design).
 - **Delivery is Server-Sent Events (`/car_card/stream`), same reasoning and
   same `_sse_stream()` helper as the record alert above** — this page
   originally polled `/car_card/state` too, and hit the identical
@@ -230,6 +237,14 @@ Cars tab first — see TODO.md).
   verification. Has the same client-side watchdog as the record alert (see
   above) for the same reason — SSE alone still needed a manual refresh
   sometimes.
+- **Dedup key is `timestamp`, not `ordinal`** (changed 2026-09-20) —
+  `car_card.html` used to key on `ordinal`, which silently swallowed any
+  re-push of the *same* car (surfaced testing `/car_card/test` repeatedly,
+  then would have broken `/car_card/trigger` outright, since re-showing the
+  same car is the entire point of that endpoint). Every real write always
+  gets a fresh timestamp, so keying on that instead still correctly ignores
+  a reconnect's echo of already-shown state (identical timestamp) without
+  blocking a genuine re-trigger.
 - **Open wrinkle, not urgent:** `car_ordinal` identifies the car model, not
   the tune — a car built for both Road and Dirt is two different Cars-tab
   rows. Telemetry's live PI resolves Class the same way race results already
