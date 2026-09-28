@@ -540,9 +540,9 @@ separate ordinal source if this is ever extended there.
       local-only commits are already reflected upstream) avoids the merge
       entirely when there's no real local work worth preserving as distinct
       commits.
-- **Card position still needs live tuning** - current CSS puts it at
-  `top: 6%; left: 3%` in `car_card.html`, picked without having seen it in
-  OBS yet. Iterate the same way the record alert's position was confirmed:
+- **Card position — done, confirmed live 2026-09-28.** `top: 6%; left: 3%`
+  in `car_card.html` (originally picked without seeing it in OBS) looked
+  good on the real stream, no changes needed. If it ever needs moving:
   fire `/car_card/test`, look at the OBS preview, adjust the CSS, repeat.
 - **`/car_card/test?ordinal=N` now pulls real data instead of always
   showing a canned Chevelle SS** - found while testing ordinals 2793/3670
