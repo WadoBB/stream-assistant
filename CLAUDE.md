@@ -177,8 +177,10 @@ the cached Best by Track+Class time for that (Track, Class). Added
 ## Stream Overlay — Car Card
 Shows a card (image, tuner, painter, Races/Wins/Win %) whenever the selected
 car changes, in free roam or otherwise — not tied to a race. Built
-2026-09-12, not yet tested live (needs "Painter" and "Ordinal" added to the
-Cars tab first — see TODO.md).
+2026-09-12; Painter and Ordinal columns added to the Cars tab. Reported
+working well live alongside the record alert on the stream before
+2026-09-28 (first stream since the 10-minute self-refresh landed) —
+treated as working but still being watched, not yet declared closed.
 
 - `telemetry_listener.py` tracks `car_ordinal` on **every** packet, not just
   at race start, and fires `on_car_change(ordinal, class, pi, drivetrain)` on
@@ -642,8 +644,7 @@ differences on the first FH6 play session.
 - **FH6 detection tuning** — scoreboard detection values for FH6 are from pre-release screenshots; verify and tune against live FH6 gameplay (check capture_agent.log for pixel counts)
 - **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
 - **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
-- **Car-change detection** — `car_ordinal` changes in telemetry when the user switches cars in free roam; would trigger stream overlay events without needing a screen scraper
-- **Stream overlays — car stats on car change, race summary at race end** still not built. The personal-record-alert overlay described below is built and confirmed working live (2026-09-11/12).
+- **Stream overlays — race summary at race end** still not built. The record alert and Car Card (car stats on car change, via `car_ordinal` in telemetry) are both built and working live — see their sections above.
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately
 

@@ -322,7 +322,17 @@ Quit Race" in CLAUDE.md - worth having that in mind while observing). That
 observation is the actual prerequisite for scoping the detection work; there's
 nothing to build correctly without it.
 
-### Car Card Overlay — built 2026-09-12, needs the sheet columns added + live testing
+### Car Card Overlay — built 2026-09-12, working live as of 2026-09-28 (still watching)
+**2026-09-28 status:** Painter/Ordinal columns are on the Cars tab, and the
+user reports the Car Card and the New Record alert both "went really well" on
+the most recent stream — the first real stream since the 10-minute
+self-refresh mitigation (see 2026-09-18 below) was deployed. The user is
+"guardedly optimistic," so this stays open as a watch item rather than
+closed: if either overlay needs a manual OBS refresh again, note which one,
+roughly how long into the stream, and check `/logs?file=controller` for
+whether the SSE push was logged (see the 2026-09-18 diagnostic note below).
+A couple more clean streams and this can move to done.
+
 Shows a graphic (car image, tuner, painter, Races/Wins/Win %) whenever the
 selected car changes — triggered by `car_ordinal` changing in telemetry, in
 free roam or otherwise, not tied to a race starting or ending. Same overlay
@@ -774,8 +784,9 @@ current) never missing an event while OBS's older engine did.
 a fixed 10-minute timer, skipping the reload if the alert/card is actively
 showing so it never cuts one off mid-display. This doesn't fix OBS's bug,
 but converts "silently stale until a human notices and refreshes" into
-"self-heals within at most ~10 minutes unattended." Not yet confirmed
-against a real multi-hour stream.
+"self-heals within at most ~10 minutes unattended." **First real stream with
+this deployed went well for both overlays (reported 2026-09-28)** - promising,
+still watching over a few more streams.
 
 **Also worth trying, not yet tested:** toggling `OBS Settings > Advanced >
 Browser Source Hardware Acceleration` (either direction, depending on
