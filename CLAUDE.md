@@ -646,3 +646,6 @@ differences on the first FH6 play session.
 - **Stream overlays — car stats on car change, race summary at race end** still not built. The personal-record-alert overlay described below is built and confirmed working live (2026-09-11/12).
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately
+
+## End of sesson: update the Second Brain
+- ** Before we finish, update C:\Users\Benny\.iCloudDrive\Claude\second-brain\resources\streamassistant\overview.md from the README, TODO.md, and recent git log: what it does, what changed, what's next.
