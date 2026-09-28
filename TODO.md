@@ -146,7 +146,7 @@ same race, producing a second identical entry.
 telemetry.log timestamps to confirm the pause theory. See `telemetry_listener.py`
 `_handle_race_end` and the packet timeout path.
 
-### Screenshot Read Fails with Permission Denied — new 2026-09-16
+### Screenshot Read Fails with Permission Denied — new 2026-09-16, retry added 2026-09-28
 Found while investigating a missing-result report (same session as the photo/promo
 false-capture note above). `stream_assistant.log`:
 ```
@@ -166,13 +166,18 @@ it. The temp-then-rename pattern (see "Race Condition Fix" in CLAUDE.md) prevent
 reading a *partially written* file but doesn't guarantee nothing else holds a
 transient lock on it immediately after the rename completes.
 
-**Not yet fixed.** Possible directions: retry the read once or twice with a short
-backoff before giving up, and/or log a distinct, obviously-different message for
-this case vs. a genuine false capture so the two don't look identical in
-`processed/` (right now both end up as an unlabeled PNG with no record of *why*
-it failed, unless the log is checked at the time). Because the file itself is
-intact and unmodified, a race lost this way is also manually recoverable after
-the fact — the image just needs to be re-run through extraction by hand.
+**Fix added 2026-09-28, not yet confirmed live:** `image_to_base64()` in
+`results_extractor.py` now retries on `PermissionError` only (backoff 0.5/1/2/4s,
+~7.5s total) before giving up; any other read error still fails immediately.
+A retry that succeeds logs `Read <file> on attempt N after file lock cleared`, so
+the next occurrence will show up in `stream_assistant.log` as a recovered read
+instead of a lost race. If all retries fail, the error message now says
+"file unreadable, image likely still valid" to distinguish it from a Claude
+"not a scoreboard" failure in `processed/`. A race lost this way is still
+manually recoverable - the image just needs to be re-run through extraction
+by hand. **To confirm:** watch for `Screenshot locked` warnings in the log over
+the next few sessions; if they appear and are followed by a successful read,
+this is closed.
 
 ### Pause Behavior — Telemetry Dropout
 Long in-game pauses cause the telemetry stream to go silent, triggering a false

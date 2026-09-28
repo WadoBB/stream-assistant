@@ -113,10 +113,33 @@ def calculate_gap(my_race_time, their_race_time):
     return f"+{gap:.3f}" if gap > 0 else f"{gap:.3f}"
 
 
+READ_RETRY_DELAYS = (0.5, 1, 2, 4)   # seconds between attempts, ~7.5s total
+
+
 def image_to_base64(image_path):
-    """Read image file and return base64 encoded string."""
-    with open(image_path, "rb") as f:
-        return base64.standard_b64encode(f.read()).decode("utf-8")
+    """
+    Read image file and return base64 encoded string.
+
+    Retries on PermissionError: right after the gaming PC's temp-then-rename
+    lands a screenshot, something else (SMB finishing the rename, antivirus
+    scanning the new file) can briefly hold a lock on it. The file itself is
+    intact - a moment later it reads fine - so giving up on the first
+    attempt loses a perfectly good race result (see TODO.md, 2026-09-16).
+    Any other error still raises immediately.
+    """
+    for attempt, delay in enumerate(READ_RETRY_DELAYS + (None,), start=1):
+        try:
+            with open(image_path, "rb") as f:
+                data = f.read()
+            if attempt > 1:
+                log.info(f"Read {os.path.basename(image_path)} on attempt {attempt} "
+                         f"after file lock cleared")
+            return base64.standard_b64encode(data).decode("utf-8")
+        except PermissionError as e:
+            if delay is None:
+                raise
+            log.warning(f"Screenshot locked (attempt {attempt}), retrying in {delay}s: {e}")
+            time.sleep(delay)
 
 
 def extract_results(client, image_path, race_id, telemetry_summary, game_version="FH5"):
@@ -132,7 +155,11 @@ def extract_results(client, image_path, race_id, telemetry_summary, game_version
     except Exception as e:
         # Must not raise here - this runs inside the background polling loop,
         # and an uncaught exception kills that thread silently (see start()).
-        log.error(f"Failed to read screenshot {image_path}: {e}")
+        # Logged distinctly from a Claude "not a scoreboard" failure: an image
+        # moved to processed/ for this reason is a valid scoreboard that can be
+        # re-run by hand.
+        log.error(f"Failed to read screenshot {image_path} "
+                  f"(file unreadable, image likely still valid): {e}")
         return None, None
 
     track_name_hint = (
