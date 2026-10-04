@@ -278,6 +278,15 @@ turns out not to be sufficient (e.g. if something about how the `<audio>`
 tag plays inside a Browser Source bypasses per-source track assignment,
 which would need investigating live in OBS rather than guessed at here).
 
+**2026-10-03 update - rev sound not heard at all during Car Card tests.**
+`/car_card/rev.mp3` is served fine (HTTP 200, 48,946 bytes) and the OBS copy
+of the page acked `shown=1` every time, so the page played it - the gap is
+OBS audio routing (Control-audio-via-OBS / mute / monitoring), not code.
+Next step offered: a narrow `/obs/audio` endpoint reporting each overlay
+source's reroute_audio, mute, volume and monitor type via obs-websocket,
+compared against the StreamElements source - then fix this and the
+own-mixer-channel issue above together.
+
 ### Car Suggester — scoped 2026-09-12, needs a dedicated session
 Suggests which car(s) to pick, before you commit, for whatever track/class
 is coming up next — a companion to the record-alert overlay but for the
