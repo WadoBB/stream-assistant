@@ -278,14 +278,15 @@ turns out not to be sufficient (e.g. if something about how the `<audio>`
 tag plays inside a Browser Source bypasses per-source track assignment,
 which would need investigating live in OBS rather than guessed at here).
 
-**2026-10-03 update - rev sound not heard at all during Car Card tests.**
-`/car_card/rev.mp3` is served fine (HTTP 200, 48,946 bytes) and the OBS copy
-of the page acked `shown=1` every time, so the page played it - the gap is
-OBS audio routing (Control-audio-via-OBS / mute / monitoring), not code.
-Next step offered: a narrow `/obs/audio` endpoint reporting each overlay
-source's reroute_audio, mute, volume and monitor type via obs-websocket,
-compared against the StreamElements source - then fix this and the
-own-mixer-channel issue above together.
+**2026-10-03 update - resolved as a misread, plus a real double-audio fix.**
+The rev wasn't noticed in tests only because the user had both overlay
+sources turned low in OBS - the OBS copies do play their sound. The real
+problem was the `/monitor` window (Brave on the AI PC) playing both sounds
+at full volume, which reached the stream a second time. Fixed: monitor.html
+loads both pages with `?muted=1`, which skips `.play()`; OBS sources are
+unchanged. Confirmed quiet by the user. The volume is now controlled in
+OBS, but whether the sounds sit on their own mixer channel (the item
+above) is still unverified.
 
 ### Car Suggester — scoped 2026-09-12, needs a dedicated session
 Suggests which car(s) to pick, before you commit, for whatever track/class
