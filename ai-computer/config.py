@@ -57,6 +57,25 @@ CAR_CARD_SOUND_FILE     = r"C:\StreamAssistant\ai-computer\overlay\rev.mp3"
 # run in portrait).
 MONITOR_HTML            = r"C:\StreamAssistant\ai-computer\overlay\monitor.html"
 
+# --- OBS auto-refresh (obs-websocket on the gaming PC) ---
+# controller.py presses a Browser Source's "Refresh cache of current page"
+# button remotely whenever an overlay event goes unacknowledged by the OBS
+# copy of the page - automating the manual refresh that was always the fix
+# for the OBS/CEF render-stall bug (see docs/OBS overlay reliability plan.md
+# and TODO.md). Requires OBS > Tools > WebSocket Server Settings enabled on
+# the gaming PC, an inbound firewall rule for OBS_WS_PORT there, and
+# `pip install obsws-python` on this machine. The password is NOT kept here
+# (this file is in git) - set OBS_WS_PASSWORD in credentials\.env; while
+# it's missing or still the CHANGE_ME placeholder, auto-refresh stays off and
+# controller.py just logs the missed acks.
+# The source names must match the Browser Source names in OBS exactly
+# (case-sensitive) - these are placeholders until confirmed.
+OBS_WS_HOST             = GAMING_PC_IP
+OBS_WS_PORT             = 4455
+OBS_OVERLAY_SOURCE      = "Record Alert"
+OBS_CAR_CARD_SOURCE     = "Car Card"
+ENV_FILE                = r"C:\StreamAssistant\ai-computer\credentials\.env"
+
 # Local seed/learned database mapping Forza's internal car_ordinal to a car's
 # full name (Year+MFG+Model, from a community FH6 ordinal list, seeded once -
 # see TODO.md's "Car Card Overlay" entry) and its abbreviated scoreboard name

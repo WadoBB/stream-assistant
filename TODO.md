@@ -796,6 +796,52 @@ troubleshooting docs. Also worth keeping OBS itself up to date
 (`Help > Check for Updates` in OBS Studio) since CEF/Chromium bundling is
 under active improvement upstream.
 
+**2026-10-03 - deep research + automatic refresh built (steps 1-2 of
+`docs/OBS overlay reliability plan.md`).** Correction to the history above:
+the issue closed "not planned" was obs-studio #11327; the tracked one is
+**obs-studio #12796, open and labelled confirmed** - maintainers reproduced
+it on Windows 11 / OBS 32.0.2 *using StreamElements widget URLs* and call it
+a Chromium/CEF render stall (JS and the connection keep running, OBS just
+stops getting repainted frames). StreamElements/Streamlabs/Streamer.bot have
+no special keepalive (Socket.IO ~25s heartbeat; Streamer.bot none) - ours is
+already stricter, and SSE vs WebSocket makes no difference. Since a manual
+refresh always fixed it, `controller.py` now does that refresh itself:
+- Both pages `GET /overlay/ack` for every new event, after two
+  `requestAnimationFrame`s (i.e. only once a frame was actually produced),
+  with `obs=1` when `window.obsstudio` exists (OBS copy vs `/monitor`).
+  Verified locally: a hidden page sends no ack, exactly as intended.
+- `_watch_state_files()` sees every state-file write (any process); if no
+  `obs=1` ack arrives within 3s it presses the Browser Source's
+  `refreshnocache` button via obs-websocket (rate-limited 1 per source per
+  3s), then logs whether the refreshed page acked ("recovered") or not.
+- An ack with `shown=0` and negative age logs a clock-skew warning - the
+  page rejects events "from the future", so a gaming PC clock running behind
+  the AI PC would silently drop events. Not observed yet; worth watching.
+- `GET /obs/status` (reachability + OBS version) and
+  `GET /obs/refresh?page=overlay|car_card` (manual test) added.
+- Fully covered by an offline test with a fake obs client (12/12, stable).
+
+**To switch auto-refresh on (it's OFF until all are done):**
+1. Gaming PC: OBS > Tools > WebSocket Server Settings > Enable, port 4455,
+   auth on; add an inbound Windows Firewall rule for TCP 4455.
+2. AI PC: `pip install obsws-python`; add `OBS_WS_PASSWORD=<password>` to
+   `ai-computer\credentials\.env` (gitignored - never config.py).
+3. Set `OBS_OVERLAY_SOURCE` / `OBS_CAR_CARD_SOURCE` in `config.py` to the
+   exact Browser Source names (placeholders "Record Alert" / "Car Card").
+4. Both sources: "Shutdown source when not visible" **off** (otherwise the
+   remote refresh is a silent no-op), "Refresh browser when scene becomes
+   active" on. Page permissions "Read access to OBS status information" is
+   correct - the page only checks `window.obsstudio` exists.
+5. Restart controller.py; startup log line should read `OBS auto-refresh:
+   ON`; `/obs/status` should return the OBS version.
+
+**Still to do (plan steps 3-6):** untick Efficiency Mode on
+`obs-browser-page.exe` during streams (obs-studio #12982); move the 10-min
+keepalive out of the page; Web Worker watchdog; upgrade to OBS 33 (CEF 150)
+once its browser-source regression #13982 is fixed. On each stream, count
+`OBS auto-refresh: pressed` lines in `/logs` - each one is a freeze healed
+unattended.
+
 ### Channel Command to Trigger Car Card — chat command built 2026-09-20, channel points deferred
 Let a viewer chat command re-fire the Car Card overlay for whichever car is
 currently selected — a viewer-interaction hook on top of the Car Card

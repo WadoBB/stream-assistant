@@ -83,6 +83,26 @@
   let lastRaceId = null;
   let hideTimer = null;
 
+  // Render acknowledgement - see controller.py's "Render acknowledgements +
+  // OBS auto-refresh" section. Every new event is acked back to the server;
+  // if the OBS copy of this page (window.obsstudio only exists inside OBS)
+  // doesn't ack within a few seconds, controller.py refreshes this Browser
+  // Source over obs-websocket. A shown event is only acked after two
+  // animation frames, i.e. once the browser has actually produced a frame -
+  // a page whose rendering has stalled (the OBS/CEF bug) may never get
+  // there even though its JS is fine, and that missing ack is the signal.
+  const IN_OBS = typeof window.obsstudio !== 'undefined';
+  function sendAck(ts, shown, ageMs) {
+    const q = new URLSearchParams({
+      page: 'overlay', ts, obs: IN_OBS ? '1' : '0',
+      shown: shown ? '1' : '0', age: String(Math.round(ageMs)),
+    });
+    fetch('/overlay/ack?' + q).catch(() => {});
+  }
+  function ackAfterPaint(ts, ageMs) {
+    requestAnimationFrame(() => requestAnimationFrame(() => sendAck(ts, true, ageMs)));
+  }
+
   function showAlert(event) {
     document.getElementById('ra-main').textContent =
       `${event.car} — ${event.track} (${event.class})`;
@@ -137,6 +157,9 @@
         lastRaceId = event.race_id;   // mark seen regardless of age
         if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
           showAlert(event);
+          ackAfterPaint(event.timestamp, ageMs);
+        } else {
+          sendAck(event.timestamp, false, ageMs);
         }
       }
     };

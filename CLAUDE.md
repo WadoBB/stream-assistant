@@ -259,11 +259,16 @@ treated as working but still being watched, not yet declared closed.
   same server, same SSE endpoints, same unmodified page code, different
   outcome purely based on which browser rendered it. Confirmed via research
   this is a known, long-standing, **unresolved** upstream OBS issue
-  ("browser source stops updating, only a manual refresh fixes it" —
-  reported for years on OBS Forums/GitHub, flagship issue closed "not
-  planned"), most likely because OBS's Browser Source runs a bundled
-  CEF/Chromium build that lags well behind a real current browser. No
-  permanent fix exists from OBS's side. **Mitigation:** both `index.html`
+  ("browser source stops updating, only a manual refresh fixes it").
+  **Corrected 2026-10-03:** the tracked issue is obs-studio #12796 — open,
+  labelled confirmed, reproduced by OBS maintainers on Windows 11 / OBS
+  32.0.2 using StreamElements widget URLs (so commercial overlays are not
+  immune — they just fire far less often than the Car Card). It's a
+  Chromium/CEF render stall in OBS 31–32's bundled Chromium 127: page JS
+  and the SSE connection keep running, OBS stops receiving repainted
+  frames. (The "closed not planned" one was #11327, a weaker report.)
+  OBS 33 (CEF 150) is the likely real fix. No
+  permanent fix exists from OBS's side yet. **Mitigation:** both `index.html`
   and `car_card.html` now self-refresh (`location.reload()`) on a fixed
   10-minute timer (skipped while actively showing, so it never cuts one off
   mid-display) — converts "stale until a human notices" into "self-heals
@@ -272,6 +277,26 @@ treated as working but still being watched, not yet declared closed.
   direction — reports go both ways) and keeping OBS itself up to date. See
   TODO.md's Car Card entry for the full history/sources before
   re-investigating this as if it were still an open mystery.
+- **Render acks + OBS auto-refresh (built 2026-10-03)** — the real
+  mitigation, automating the manual refresh that always worked. Full
+  research and the ranked plan this implements are in
+  `docs/OBS overlay reliability plan.md`. Both pages `GET /overlay/ack`
+  for each new event once a frame has actually been produced (double
+  `requestAnimationFrame`), flagged `obs=1` when `window.obsstudio`
+  exists. `controller.py`'s `_watch_state_files()` watches the state
+  files (not the writers — the record alert is written by main.py, a
+  separate process), and if the OBS copy doesn't ack within 3s it presses
+  that Browser Source's `refreshnocache` button over obs-websocket
+  (`obsws-python`, gaming PC port 4455; rate-limited 1/source/3s, since
+  rapid repeated refreshes are themselves known to break CEF rendering).
+  `OBS_WS_PASSWORD` lives in `credentials\.env`, never `config.py`;
+  auto-refresh stays OFF (acks still logged) until it's set. Requires
+  "Shutdown source when not visible" off on both sources, or the refresh
+  is a silent no-op that obs-websocket still reports as success.
+  `/obs/status` and `/obs/refresh?page=` are the remote checks. Diagnose a
+  missed event from `/logs`: no `SSE push` line = server; push but no ack
+  = page never painted it; ack with `shown=0` = page rejected it (negative
+  age = clock skew between the PCs).
 - **`/monitor`** (`controller.py`, serving `ai-computer/overlay/monitor.html`)
   stacks both overlays (record alert on top, Car Card below) via iframes
   for the streamer's own second-screen viewing — not an OBS Browser Source

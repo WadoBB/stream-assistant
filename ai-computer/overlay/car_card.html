@@ -101,6 +101,22 @@
   let lastTimestamp = null;
   let hideTimer = null;
 
+  // Render acknowledgement - see index.html's copy of this comment and
+  // controller.py's "Render acknowledgements + OBS auto-refresh" section.
+  // An unacknowledged event from the OBS copy of this page gets this
+  // Browser Source refreshed remotely.
+  const IN_OBS = typeof window.obsstudio !== 'undefined';
+  function sendAck(ts, shown, ageMs) {
+    const q = new URLSearchParams({
+      page: 'car_card', ts, obs: IN_OBS ? '1' : '0',
+      shown: shown ? '1' : '0', age: String(Math.round(ageMs)),
+    });
+    fetch('/overlay/ack?' + q).catch(() => {});
+  }
+  function ackAfterPaint(ts, ageMs) {
+    requestAnimationFrame(() => requestAnimationFrame(() => sendAck(ts, true, ageMs)));
+  }
+
   function formatWinRate(v) {
     if (v === '' || v === null || v === undefined) return null;
     const n = Number(v);
@@ -181,6 +197,9 @@
         lastTimestamp = event.timestamp;
         if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
           showCard(event);
+          ackAfterPaint(event.timestamp, ageMs);
+        } else {
+          sendAck(event.timestamp, false, ageMs);
         }
       }
     };

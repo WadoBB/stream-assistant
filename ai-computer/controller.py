@@ -21,7 +21,9 @@ from flask import Flask, jsonify, request, send_file, Response
 from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLDER,
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
-                     CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE, MONITOR_HTML)
+                     CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE, MONITOR_HTML,
+                     OBS_WS_HOST, OBS_WS_PORT, OBS_OVERLAY_SOURCE, OBS_CAR_CARD_SOURCE,
+                     ENV_FILE)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 SYNC_CAR_NAMES_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_car_names_from_sheet.py"
@@ -139,6 +141,212 @@ def _sse_stream(state_file_path):
         except Exception as e:
             log.error(f"SSE stream error for {state_file_path}: {e}")
         time.sleep(1)
+
+
+# =============================================================
+# Render acknowledgements + OBS auto-refresh
+#
+# Root cause of the "overlay stops updating until the Browser Source is
+# manually refreshed" problem is a confirmed, still-open Chromium/CEF bug in
+# the browser OBS 31-32 bundle (obs-studio #12796) - the page's JS and SSE
+# connection keep running but OBS stops receiving repainted frames. Nothing
+# in-page can fix that; a refresh always did. So:
+#   1. Both overlay pages GET /overlay/ack for every new event they receive,
+#      after the browser has actually produced a frame showing it (double
+#      requestAnimationFrame - a page whose rendering is stalled may never
+#      get there, which is the point). obs=1 marks the OBS copy, as opposed
+#      to the /monitor copy in Brave.
+#   2. _watch_state_files() notices every write to either state file -
+#      regardless of which process wrote it (main.py's sheets_writer, this
+#      controller's /test and /trigger routes, test_car_card.py) - and if no
+#      obs=1 ack for that event's timestamp arrives within OBS_ACK_TIMEOUT_S,
+#      presses that Browser Source's refresh button over obs-websocket. The
+#      reloaded page's new SSE connection receives the current state on
+#      connect and shows it (still well inside its 60s MAX_AGE_MS).
+# Every missed ack is logged even while auto-refresh is unconfigured, so
+# /logs?file=controller shows which side failed for any missed event: no
+# "SSE push" line = server; push but no ack = page never processed/painted
+# it; ack with shown=0 = page received it but rejected it (e.g. clock skew).
+# =============================================================
+OBS_ACK_TIMEOUT_S          = 3.0   # SSE loop polls mtime every 1s, so push lag alone can be ~1s
+OBS_RECOVERY_CHECK_S       = 6.0   # after a refresh, how long to wait before checking it worked
+OBS_REFRESH_MIN_INTERVAL_S = 3.0   # rapid repeated refreshes are themselves known to break CEF rendering
+OBS_PLACEHOLDER_PASSWORD   = "CHANGE_ME"
+
+OVERLAY_PAGES = {
+    "overlay":  {"state_file": OVERLAY_STATE_FILE,  "obs_source": OBS_OVERLAY_SOURCE},
+    "car_card": {"state_file": CAR_CARD_STATE_FILE, "obs_source": OBS_CAR_CARD_SOURCE},
+}
+
+_acks      = {}     # (page, event timestamp) -> {"shown": bool, "age": int|None, "at": float}
+_acks_lock = threading.Lock()
+
+_obs_client       = None
+_obs_lock         = threading.Lock()
+_obs_last_refresh = {}   # page -> time.time() of last refresh press
+_obs_refresh_lock = threading.Lock()
+
+
+def _obs_password():
+    """
+    Reads OBS_WS_PASSWORD from credentials\\.env (gitignored) rather than
+    config.py, which is committed. Returns None while unset or still the
+    placeholder, which keeps auto-refresh switched off.
+    """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_FILE)
+    except ImportError:
+        pass
+    pw = os.environ.get("OBS_WS_PASSWORD")
+    if not pw or pw == OBS_PLACEHOLDER_PASSWORD:
+        return None
+    return pw
+
+
+def _obs_disabled_reason():
+    """Returns why auto-refresh can't run, or None if it's configured."""
+    try:
+        import obsws_python  # noqa: F401
+    except ImportError:
+        return "obsws-python not installed (pip install obsws-python)"
+    if _obs_password() is None:
+        return "OBS_WS_PASSWORD not set in credentials\\.env"
+    return None
+
+
+def _obs_call(fn):
+    """
+    Runs fn(client) against a lazily-created, reused obs-websocket client.
+    Any failure drops the client so the next call reconnects from scratch -
+    OBS restarting or the gaming PC sleeping shouldn't need a controller.py
+    restart to recover. Serialized by a lock: the underlying websocket client
+    is not safe to share across threads.
+    """
+    global _obs_client
+    import obsws_python as obs
+    # obsws-python logs its connection parameters, password included, at
+    # DEBUG - keep it quiet regardless of what the root logger is set to.
+    logging.getLogger("obsws_python").setLevel(logging.WARNING)
+    with _obs_lock:
+        try:
+            if _obs_client is None:
+                _obs_client = obs.ReqClient(host=OBS_WS_HOST, port=OBS_WS_PORT,
+                                            password=_obs_password(), timeout=3)
+            return fn(_obs_client)
+        except Exception:
+            try:
+                if _obs_client is not None:
+                    _obs_client.disconnect()
+            except Exception:
+                pass
+            _obs_client = None
+            raise
+
+
+def _refresh_obs_source(page, reason):
+    """
+    Presses the Browser Source's own "Refresh cache of current page" button
+    (property "refreshnocache") - exactly the manual fix, done remotely.
+    Rate-limited per source. Note obs-websocket reports success even when
+    this is a no-op because the source has no live browser ("Shutdown source
+    when not visible" on and the source hidden) - keep that setting off.
+    Returns (ok, message).
+    """
+    disabled = _obs_disabled_reason()
+    if disabled:
+        return False, f"auto-refresh disabled: {disabled}"
+
+    with _obs_refresh_lock:
+        now = time.time()
+        if now - _obs_last_refresh.get(page, 0) < OBS_REFRESH_MIN_INTERVAL_S:
+            return False, "skipped: refreshed under {:.0f}s ago".format(OBS_REFRESH_MIN_INTERVAL_S)
+        _obs_last_refresh[page] = now
+
+    source = OVERLAY_PAGES[page]["obs_source"]
+    try:
+        _obs_call(lambda c: c.press_input_properties_button(source, "refreshnocache"))
+        log.warning(f"OBS auto-refresh: pressed refresh on '{source}' ({reason})")
+        return True, f"refreshed '{source}'"
+    except Exception as e:
+        log.error(f"OBS auto-refresh failed for '{source}': {type(e).__name__}: {e}")
+        return False, f"{type(e).__name__}: {e}"
+
+
+def _get_ack(page, ts):
+    with _acks_lock:
+        return _acks.get((page, ts))
+
+
+def _check_ack(page, ts):
+    """
+    Runs on its own thread per event: waits for the OBS copy of the page to
+    acknowledge ts, refreshes the source if it didn't, then checks whether
+    the refresh actually got the event on screen.
+    """
+    time.sleep(OBS_ACK_TIMEOUT_S)
+    ack = _get_ack(page, ts)
+    if ack is not None:
+        if not ack["shown"]:
+            age = ack["age"]
+            hint = (" - negative age means the gaming PC's clock is behind this one; "
+                    "the page rejects events from the future") if age is not None and age < 0 else ""
+            log.warning(f"Overlay ack: {page} {ts} received by OBS but NOT shown (age={age}ms){hint}")
+        return
+
+    log.warning(f"Overlay ack: no OBS ack for {page} {ts} within {OBS_ACK_TIMEOUT_S:.0f}s")
+    ok, msg = _refresh_obs_source(page, f"no ack for {ts}")
+    if not ok:
+        log.info(f"Overlay ack: {page} {ts} not refreshed - {msg}")
+        return
+
+    time.sleep(OBS_RECOVERY_CHECK_S)
+    if _get_ack(page, ts) is not None:
+        log.info(f"Overlay ack: {page} {ts} recovered after refresh")
+    else:
+        log.warning(f"Overlay ack: {page} {ts} still unacknowledged {OBS_RECOVERY_CHECK_S:.0f}s after refresh")
+
+
+def _watch_state_files():
+    """
+    Background thread: spots every write to either overlay state file by
+    mtime (same approach as _sse_stream()) and starts an ack check for it.
+    Watching the files rather than hooking each writer is deliberate - the
+    record alert is written by main.py, a separate process, so this is the
+    one place that sees every event no matter who wrote it.
+    """
+    last_mtimes = {}
+    for page, cfg in OVERLAY_PAGES.items():
+        path = cfg["state_file"]
+        last_mtimes[page] = os.path.getmtime(path) if os.path.exists(path) else None
+
+    while True:
+        for page, cfg in OVERLAY_PAGES.items():
+            path = cfg["state_file"]
+            try:
+                if not os.path.exists(path):
+                    continue
+                mtime = os.path.getmtime(path)
+                if mtime == last_mtimes[page]:
+                    continue
+                with open(path) as f:
+                    ts = json.load(f).get("timestamp")
+                # Only advance past this write once it's been read cleanly -
+                # a read racing os.replace() just retries on the next pass.
+                last_mtimes[page] = mtime
+                if ts:
+                    threading.Thread(target=_check_ack, args=(page, ts), daemon=True).start()
+            except Exception as e:
+                log.debug(f"State watcher read failed for {path}: {e}")
+        _prune_acks()
+        time.sleep(0.25)
+
+
+def _prune_acks():
+    cutoff = time.time() - 300
+    with _acks_lock:
+        for key in [k for k, v in _acks.items() if v["at"] < cutoff]:
+            del _acks[key]
 
 
 def _find_orphaned_pipeline_pid():
@@ -747,6 +955,78 @@ def overlay_test():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/overlay/ack", methods=["GET"])
+def overlay_ack():
+    """
+    Render acknowledgement from an overlay page - see the "Render
+    acknowledgements + OBS auto-refresh" section above.
+    ?page=overlay|car_card (allowlist) &ts=<event timestamp> &obs=0|1
+    &shown=0|1 &age=<ms the page computed the event's age as>.
+    Only obs=1 acks count toward the auto-refresh decision; /monitor's
+    (obs=0) are logged for comparison but otherwise ignored.
+    """
+    page = request.args.get("page", "")
+    ts = request.args.get("ts", "")
+    if page not in OVERLAY_PAGES or not ts:
+        return jsonify({"status": "error", "message": "page must be overlay|car_card and ts is required"}), 400
+
+    is_obs = request.args.get("obs") == "1"
+    shown = request.args.get("shown") == "1"
+    try:
+        age = int(float(request.args.get("age", "")))
+    except ValueError:
+        age = None
+
+    log.info(f"Overlay ack: {page} {ts} obs={int(is_obs)} shown={int(shown)} age={age}ms")
+    if is_obs:
+        with _acks_lock:
+            _acks[(page, ts)] = {"shown": shown, "age": age, "at": time.time()}
+    return jsonify({"status": "ok"})
+
+
+@app.route("/obs/status", methods=["GET"])
+def obs_status():
+    """
+    Reports whether auto-refresh is configured and whether OBS on the gaming
+    PC is actually reachable over obs-websocket (via GetVersion). Same narrow
+    remote-diagnosis pattern as /logs - checkable from either machine.
+    """
+    disabled = _obs_disabled_reason()
+    result = {
+        "host": OBS_WS_HOST,
+        "port": OBS_WS_PORT,
+        "sources": {page: cfg["obs_source"] for page, cfg in OVERLAY_PAGES.items()},
+        "configured": disabled is None,
+    }
+    if disabled:
+        result.update(status="disabled", message=disabled)
+        return jsonify(result)
+    try:
+        version = _obs_call(lambda c: c.send("GetVersion", raw=True))
+        result.update(status="ok",
+                      obs_version=version.get("obsVersion"),
+                      obs_websocket_version=version.get("obsWebSocketVersion"))
+        return jsonify(result)
+    except Exception as e:
+        result.update(status="error", message=f"{type(e).__name__}: {e}")
+        return jsonify(result), 502
+
+
+@app.route("/obs/refresh", methods=["GET"])
+def obs_refresh():
+    """
+    Manually presses refresh on one overlay's Browser Source in OBS -
+    ?page=overlay|car_card (allowlist, never a free-form source name). Goes
+    through the same rate limit as auto-refresh. For verifying the
+    obs-websocket path end to end without waiting for a missed event.
+    """
+    page = request.args.get("page", "")
+    if page not in OVERLAY_PAGES:
+        return jsonify({"status": "error", "message": "page must be overlay|car_card"}), 400
+    ok, msg = _refresh_obs_source(page, "manual /obs/refresh")
+    return jsonify({"status": "ok" if ok else "error", "message": msg}), (200 if ok else 503)
+
+
 @app.route("/logs", methods=["GET"])
 def get_logs():
     """
@@ -791,7 +1071,12 @@ if __name__ == "__main__":
     log.info("Stream Assistant Controller Starting")
     log.info(f"Listening on http://0.0.0.0:{CONTROLLER_PORT}")
     log.info("Waiting for Stream Deck toggle requests...")
+    obs_disabled = _obs_disabled_reason()
+    log.info(f"OBS auto-refresh: {'OFF - ' + obs_disabled if obs_disabled else 'ON'} "
+             f"(obs-websocket {OBS_WS_HOST}:{OBS_WS_PORT})")
     log.info("=" * 55)
+
+    threading.Thread(target=_watch_state_files, daemon=True).start()
 
     # threaded=True is required now that /overlay/stream and /car_card/stream
     # hold a connection open indefinitely (Server-Sent Events) - without it,
