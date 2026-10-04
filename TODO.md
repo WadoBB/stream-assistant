@@ -827,7 +827,7 @@ refresh always fixed it, `controller.py` now does that refresh itself:
 2. AI PC: `pip install obsws-python`; add `OBS_WS_PASSWORD=<password>` to
    `ai-computer\credentials\.env` (gitignored - never config.py).
 3. Set `OBS_OVERLAY_SOURCE` / `OBS_CAR_CARD_SOURCE` in `config.py` to the
-   exact Browser Source names (placeholders "Record Alert" / "Car Card").
+   exact Browser Source names ("Record Alert" / "Car Card" - confirmed 2026-10-03).
 4. Both sources: "Shutdown source when not visible" **off** (otherwise the
    remote refresh is a silent no-op), "Refresh browser when scene becomes
    active" on. Page permissions "Read access to OBS status information" is

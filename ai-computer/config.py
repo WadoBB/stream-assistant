@@ -69,7 +69,7 @@ MONITOR_HTML            = r"C:\StreamAssistant\ai-computer\overlay\monitor.html"
 # it's missing or still the CHANGE_ME placeholder, auto-refresh stays off and
 # controller.py just logs the missed acks.
 # The source names must match the Browser Source names in OBS exactly
-# (case-sensitive) - these are placeholders until confirmed.
+# (case-sensitive) - confirmed against the gaming PC's OBS 2026-10-03.
 OBS_WS_HOST             = GAMING_PC_IP
 OBS_WS_PORT             = 4455
 OBS_OVERLAY_SOURCE      = "Record Alert"
