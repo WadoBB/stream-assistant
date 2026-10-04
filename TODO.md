@@ -862,6 +862,26 @@ once its browser-source regression #13982 is fixed. On each stream, count
 `OBS auto-refresh: pressed` lines in `/logs` - each one is a freeze healed
 unattended.
 
+### New-Record Chat Post — built 2026-10-03, Streamer.bot setup pending
+Every REAL new record now also posts a line to Twitch and YouTube chat, as a
+lasting record of it (Car Card intentionally does not post). `controller.py`'s
+`_watch_state_files()` - which already sees every overlay state write -
+POSTs `{"action":{"name":"Post Record To Chat"},"args":{"message":...}}` to
+Streamer.bot's HTTP server on the gaming PC (`:7474/DoAction`). Message:
+`🏆 NEW RECORD! <car> — <track> (<class>) <time> (previous best <prev>)`, or
+`(first time on record)`. `/overlay/test` events (race_id `test-...`) are
+never posted, so fake records can't reach viewers; `GET /chat/test` sends a
+fixed, clearly-labelled test line through the same path instead. Success or
+failure of each post is logged (`Record posted to chat` / `FAILED`).
+Offline test with a fake Streamer.bot: 7/7.
+
+**Setup still needed (gaming PC):** Streamer.bot HTTP Server enabled on port
+7474 bound to the LAN, inbound firewall rule for TCP 7474 from
+192.168.137.230, and an action named exactly `Post Record To Chat` with
+Twitch "Send Message to Channel" + YouTube "Send Message to Broadcast"
+sub-actions, both with message `%message%`. Then `git pull` + controller
+restart on the AI PC, and `/chat/test`.
+
 ### Channel Command to Trigger Car Card — chat command built 2026-09-20, channel points deferred
 Let a viewer chat command re-fire the Car Card overlay for whichever car is
 currently selected — a viewer-interaction hook on top of the Car Card

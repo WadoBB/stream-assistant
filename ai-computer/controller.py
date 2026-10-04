@@ -23,7 +23,7 @@ from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLD
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
                      CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE, MONITOR_HTML,
                      OBS_WS_HOST, OBS_WS_PORT, OBS_OVERLAY_SOURCE, OBS_CAR_CARD_SOURCE,
-                     ENV_FILE)
+                     ENV_FILE, STREAMERBOT_HTTP_PORT, STREAMERBOT_RECORD_ACTION)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
 SYNC_CAR_NAMES_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_car_names_from_sheet.py"
@@ -330,16 +330,64 @@ def _watch_state_files():
                 if mtime == last_mtimes[page]:
                     continue
                 with open(path) as f:
-                    ts = json.load(f).get("timestamp")
+                    event = json.load(f)
+                ts = event.get("timestamp")
                 # Only advance past this write once it's been read cleanly -
                 # a read racing os.replace() just retries on the next pass.
                 last_mtimes[page] = mtime
                 if ts:
                     threading.Thread(target=_check_ack, args=(page, ts), daemon=True).start()
+                if page == "overlay":
+                    threading.Thread(target=_post_record_to_chat, args=(event,), daemon=True).start()
             except Exception as e:
                 log.debug(f"State watcher read failed for {path}: {e}")
         _prune_acks()
         time.sleep(0.25)
+
+
+# =============================================================
+# New-record chat post via Streamer.bot
+#
+# Gives the streamer a lasting record, in Twitch and YouTube chat, of every
+# real new record the overlay flashes. Hooked into _watch_state_files() for
+# the same reason the ack check is: the record is written by main.py, a
+# separate process, and this is the one place that sees every write. Test
+# events (/overlay/test, race_id "test-...") are never posted, so a fake
+# record can't reach viewers - /chat/test sends a clearly-labelled message
+# instead. Uses Streamer.bot's HTTP server DoAction, which takes the action
+# name and an args dict exposed to its sub-actions as %message%.
+# =============================================================
+def _record_chat_message(event):
+    previous = event.get("previous_time")
+    tail = f"previous best {previous}" if previous else "first time on record"
+    return (f"🏆 NEW RECORD! {event.get('car')} — {event.get('track')} "
+            f"({event.get('class')}) {event.get('time')} ({tail})")
+
+
+def _send_to_streamerbot(message):
+    """POSTs DoAction to Streamer.bot on the gaming PC. Returns (ok, detail)."""
+    import urllib.request
+    url = f"http://{GAMING_PC_IP}:{STREAMERBOT_HTTP_PORT}/DoAction"
+    body = json.dumps({"action": {"name": STREAMERBOT_RECORD_ACTION},
+                       "args": {"message": message}}).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return True, f"HTTP {resp.status}"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+
+
+def _post_record_to_chat(event):
+    if str(event.get("race_id", "")).startswith("test-"):
+        return
+    message = _record_chat_message(event)
+    ok, detail = _send_to_streamerbot(message)
+    if ok:
+        log.info(f"Record posted to chat ({detail}): {message}")
+    else:
+        log.error(f"Record chat post FAILED ({detail}): {message}")
 
 
 def _prune_acks():
@@ -1025,6 +1073,18 @@ def obs_refresh():
         return jsonify({"status": "error", "message": "page must be overlay|car_card"}), 400
     ok, msg = _refresh_obs_source(page, "manual /obs/refresh")
     return jsonify({"status": "ok" if ok else "error", "message": msg}), (200 if ok else 503)
+
+
+@app.route("/chat/test", methods=["GET"])
+def chat_test():
+    """
+    Sends a clearly-labelled test line through the same Streamer.bot path a
+    real new record uses, to verify the HTTP server, firewall rule and
+    action end to end. Takes no params - the message is fixed, so this
+    can't be used to post arbitrary text to chat.
+    """
+    ok, detail = _send_to_streamerbot("🔧 Stream Assistant test - new-record chat posts are working.")
+    return jsonify({"status": "ok" if ok else "error", "message": detail}), (200 if ok else 502)
 
 
 @app.route("/logs", methods=["GET"])

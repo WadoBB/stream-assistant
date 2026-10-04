@@ -76,6 +76,16 @@ OBS_OVERLAY_SOURCE      = "Record Alert"
 OBS_CAR_CARD_SOURCE     = "Car Card"
 ENV_FILE                = r"C:\StreamAssistant\ai-computer\credentials\.env"
 
+# --- New-record chat post (Streamer.bot on the gaming PC) ---
+# controller.py POSTs each REAL new record (never /overlay/test events) to
+# Streamer.bot's HTTP server, which runs the named action with %message% set
+# to the chat line; that action's sub-actions send it to Twitch and YouTube.
+# Requires Streamer.bot > Servers/Clients > HTTP Server enabled on port
+# 7474, bound to the LAN (not just 127.0.0.1), plus an inbound firewall rule
+# for TCP 7474 on the gaming PC. The action name must match exactly.
+STREAMERBOT_HTTP_PORT   = 7474
+STREAMERBOT_RECORD_ACTION = "Post Record To Chat"
+
 # Local seed/learned database mapping Forza's internal car_ordinal to a car's
 # full name (Year+MFG+Model, from a community FH6 ordinal list, seeded once -
 # see TODO.md's "Car Card Overlay" entry) and its abbreviated scoreboard name
