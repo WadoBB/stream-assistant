@@ -816,7 +816,11 @@ refresh always fixed it, `controller.py` now does that refresh itself:
   3s), then logs whether the refreshed page acked ("recovered") or not.
 - An ack with `shown=0` and negative age logs a clock-skew warning - the
   page rejects events "from the future", so a gaming PC clock running behind
-  the AI PC would silently drop events. Not observed yet; worth watching.
+  the AI PC would silently drop events. **Observed live 2026-10-03** (gaming PC
+  ~0.25s behind; a test card logged `obs=1 shown=0 age=-157ms` and never
+  appeared) and **fixed** the same day: both pages now accept events up to
+  `CLOCK_SKEW_MS` = 5s in the future. Likely a hidden contributor to the
+  old "random misses in OBS, never on /monitor" pattern.
 - `GET /obs/status` (reachability + OBS version) and
   `GET /obs/refresh?page=overlay|car_card` (manual test) added.
 - Fully covered by an offline test with a fake obs client (12/12, stable).

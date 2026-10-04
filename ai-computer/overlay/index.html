@@ -78,6 +78,13 @@
   // handles reconnecting automatically if the connection ever drops (e.g. a
   // controller.py restart) - no manual retry loop needed here.
   const MAX_AGE_MS = 60 * 1000;
+  // Event timestamps come from the AI PC's clock but ageMs is measured on
+  // whichever PC renders this page. The gaming PC's clock was measured
+  // ~0.25s behind the AI PC's (2026-10-03), so a fast delivery computed a
+  // negative age and the OBS copy silently dropped the event - caught live
+  // via /overlay/ack (obs=1 shown=0 age=-157ms). Tolerate a few seconds of
+  // "future"; MAX_AGE_MS still stops stale events replaying on reload.
+  const CLOCK_SKEW_MS = 5000;
   const SHOW_MS = 7000;
 
   let lastRaceId = null;
@@ -155,7 +162,7 @@
       if (event && event.race_id && event.race_id !== lastRaceId) {
         const ageMs = Date.now() - new Date(event.timestamp).getTime();
         lastRaceId = event.race_id;   // mark seen regardless of age
-        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+        if (ageMs >= -CLOCK_SKEW_MS && ageMs <= MAX_AGE_MS) {
           showAlert(event);
           ackAfterPaint(event.timestamp, ageMs);
         } else {

@@ -96,6 +96,10 @@
   // new ordinal restarts the fade timer instead of fighting a previous one,
   // so rapid browsing just keeps the card visible rather than flickering.
   const MAX_AGE_MS = 60 * 1000;
+  // Tolerate the gaming PC's clock running behind the AI PC's - see
+  // index.html's copy of this comment (a ~0.25s skew silently dropped
+  // fast-arriving events in OBS).
+  const CLOCK_SKEW_MS = 5000;
   const SHOW_MS = 10000;
 
   let lastTimestamp = null;
@@ -195,7 +199,7 @@
       if (event && event.timestamp && event.timestamp !== lastTimestamp) {
         const ageMs = Date.now() - new Date(event.timestamp).getTime();
         lastTimestamp = event.timestamp;
-        if (ageMs >= 0 && ageMs <= MAX_AGE_MS) {
+        if (ageMs >= -CLOCK_SKEW_MS && ageMs <= MAX_AGE_MS) {
           showCard(event);
           ackAfterPaint(event.timestamp, ageMs);
         } else {
