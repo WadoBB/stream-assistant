@@ -821,7 +821,13 @@ refresh always fixed it, `controller.py` now does that refresh itself:
   `GET /obs/refresh?page=overlay|car_card` (manual test) added.
 - Fully covered by an offline test with a fake obs client (12/12, stable).
 
-**To switch auto-refresh on (it's OFF until all are done):**
+**Switched ON 2026-10-03** - `/obs/status` reaches OBS 32.2.2 / obs-websocket
+5.7.4; remote `refreshnocache` on Car Card reloaded the page in <0.1s; a
+test card was acked by OBS (`obs=1 shown=1`, 660ms) so no refresh fired;
+no clock skew between the PCs. Live-stream verification still pending -
+count `OBS auto-refresh: pressed` lines in `/logs` after the next stream.
+
+**Setup (all done; kept for a reinstall):**
 1. Gaming PC: OBS > Tools > WebSocket Server Settings > Enable, port 4455,
    auth on; add an inbound Windows Firewall rule for TCP 4455.
 2. AI PC: `pip install obsws-python`; add `OBS_WS_PASSWORD=<password>` to
