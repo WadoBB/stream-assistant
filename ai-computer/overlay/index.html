@@ -85,6 +85,8 @@
   // via /overlay/ack (obs=1 shown=0 age=-157ms). Tolerate a few seconds of
   // "future"; MAX_AGE_MS still stops stale events replaying on reload.
   const CLOCK_SKEW_MS = 5000;
+  // /monitor loads this page with ?muted=1 - see monitor.html.
+  const MUTED = new URLSearchParams(location.search).has('muted');
   const SHOW_MS = 7000;
 
   let lastRaceId = null;
@@ -125,8 +127,10 @@
     // sound working), but .catch() here so a browser that DOES block it
     // just skips the sound silently instead of throwing.
     const sound = document.getElementById('cheer-sound');
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
+    if (!MUTED) {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
 
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => el.classList.remove('show'), SHOW_MS);

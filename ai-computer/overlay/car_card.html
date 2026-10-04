@@ -100,6 +100,8 @@
   // index.html's copy of this comment (a ~0.25s skew silently dropped
   // fast-arriving events in OBS).
   const CLOCK_SKEW_MS = 5000;
+  // /monitor loads this page with ?muted=1 - see monitor.html.
+  const MUTED = new URLSearchParams(location.search).has('muted');
   const SHOW_MS = 10000;
 
   let lastTimestamp = null;
@@ -153,8 +155,10 @@
     document.getElementById('cc-image').src = `/car_card/image/${event.ordinal}`;
 
     const rev = document.getElementById('rev-sound');
-    rev.currentTime = 0;
-    rev.play().catch(() => {});   // same autoplay-block tolerance as the record alert
+    if (!MUTED) {
+      rev.currentTime = 0;
+      rev.play().catch(() => {});   // same autoplay-block tolerance as the record alert
+    }
 
     const el = document.getElementById('car-card');
     el.classList.add('show');

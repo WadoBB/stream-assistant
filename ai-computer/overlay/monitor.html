@@ -38,9 +38,15 @@
   monitor. Stacked top/bottom for a narrow vertical display like the
   Xeneon Edge run in portrait - see gaming-pc/open_stream_monitor.bat.
 -->
+<!--
+  ?muted=1 silences both pages here - this window plays on the AI PC's own
+  speakers, and its sound was reaching the stream a second time on top of
+  the (volume-controlled) OBS copies. OBS's Browser Sources load the pages
+  without the flag, so their sound is unaffected.
+-->
 <div id="stack">
-  <iframe src="/overlay"></iframe>
-  <iframe src="/car_card"></iframe>
+  <iframe src="/overlay?muted=1"></iframe>
+  <iframe src="/car_card?muted=1"></iframe>
 </div>
 
 </body>
