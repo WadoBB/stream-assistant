@@ -308,6 +308,30 @@ treated as working but still being watched, not yet declared closed.
   gaming PC. The window position/size in that script are placeholder values
   pending confirmation against the user's real monitor layout.
 
+## Stream Overlay — Car Suggester
+Built 2026-10-17, not yet tested against the real sheet or in OBS. See
+TODO.md's Car Suggester entry for setup steps and the deferred display
+options (chat, Xeneon).
+
+- Stream Deck buttons (one per Class + Road/Dirt) GET
+  `/suggest/show?class=A&type=Dirt[&mode=unraced]`. The button stands in
+  for the screen detection the original Car Suggester design needed, so
+  there's no track: ranking is per car within (Class, Type).
+- `controller.py` runs `suggest_cars.py` as a subprocess on every press
+  (fresh Cars-tab read, keeps the Google API out of controller.py), which
+  writes `overlay/suggest_state.json`; `/suggest` is the page, with the same
+  SSE / watchdog / ack / OBS auto-refresh setup as the other two overlays
+  (OBS source name `Car Suggester`).
+- The game comes from the running `main.py`'s `--game` flag, read from the
+  OS (`_current_game()`, same ask-the-OS pattern as `is_running()`), so the
+  buttons don't need FH5/FH6 variants. Falls back to FH6.
+- Fav `M` (Meta) and `N` (Not favorite: uncompetitive or just not fun to
+  drive) are never suggested. Ranking is win rate damped toward the group
+  average for small samples plus a bonus per Track+Class record. Knobs,
+  list length and the display timer (`SUGGEST_SHOW_SECONDS`, separate from
+  the other overlays on purpose: it has to match the car-select window)
+  all live in `config.py` and are re-read on every press.
+
 ## Network Share (Screenshots)
 The AI computer shares `C:\StreamAssistant\ai-computer\captures\` as `StreamCaptures`.
 The gaming PC maps this as drive **Z:** → `\\192.168.137.230\StreamCaptures`.
@@ -669,6 +693,7 @@ differences on the first FH6 play session.
 - **FH6 detection tuning** — scoreboard detection values for FH6 are from pre-release screenshots; verify and tune against live FH6 gameplay (check capture_agent.log for pixel counts)
 - **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
 - **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
+- **Car Suggester long-press (unraced cars)** — `?mode=unraced` is built; only the Stream Deck long-press wiring is left
 - **Stream overlays — race summary at race end** still not built. The record alert and Car Card (car stats on car change, via `car_ordinal` in telemetry) are both built and working live — see their sections above.
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately

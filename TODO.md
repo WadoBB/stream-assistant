@@ -288,11 +288,62 @@ unchanged. Confirmed quiet by the user. The volume is now controlled in
 OBS, but whether the sounds sit on their own mixer channel (the item
 above) is still unverified.
 
-### Car Suggester — scoped 2026-09-12, needs a dedicated session
+### Car Suggester — button version built 2026-10-17, needs AI Computer + OBS + Stream Deck setup
+**Why it exists:** twice in one night the user raced three races in the
+wrong car - once from running out of car-select time, once from picking a
+road car for a dirt race. The detection-based design below is still
+blocked, so this version skips detection: the user presses a Stream Deck
+button for the Class + surface that just came up (Road C/B/A/S1/S2/R,
+Dirt C/B/A/S1 - no S2/R Dirt), and the top cars for it show as a third
+stream overlay. There's no track, so ranking is per car, not per (Track, Class).
+
+**Built (tested on the gaming PC with stubbed Sheets data and a local
+controller, NOT yet against the real sheet or in OBS):**
+- `ai-computer/suggest_cars.py` reads the Cars tab (by header name) and
+  ranks the Class/Type's raced cars, excluding Fav `M` (Meta) and `N` (Not
+  favorite). Score = win rate blended with the group average as if the car
+  had `SUGGEST_PRIOR_RACES` extra races (stops a 1-for-1 car topping an
+  18-for-25 one) + `SUGGEST_RECORD_BONUS` per Best by Track+Class record
+  held in that class. Shows the garage name (Year MFG Model) since that's
+  what you scroll to, plus wins/races, win %, records and tuner.
+- `controller.py`: `/suggest/show?class=A&type=Dirt` (the Stream Deck
+  target; game comes from the running pipeline's `--game`, FH6 if none),
+  `/suggest` (page), `/suggest/stream`, `/suggest/state`, `/suggest/test`
+  (canned data, `?count=&show_seconds=`). Same SSE + ack + OBS auto-refresh
+  path as the other overlays (`OBS_SUGGEST_SOURCE = "Car Suggester"`).
+- `overlay/suggest.html`: top-right panel (Car Card is top-left and fires
+  while browsing cars), top 3 large, countdown bar, hides itself.
+- Settings in `config.py`, read fresh on every press (no restart):
+  `SUGGEST_COUNT` (10), `SUGGEST_SHOW_SECONDS` (25 - its own timer, to be
+  tuned to the car-select window so it's gone before the race starts),
+  plus the two ranking knobs above.
+- `?mode=unraced` (owned cars in that Class/Type with Races = 0, using the
+  `FH6` ownership column when present) is already in place for the
+  planned long-press - only the Stream Deck wiring is left for it.
+
+**Setup left (user):**
+1. AI Computer: `git pull`, restart `controller.py`.
+2. OBS: add a Browser Source named exactly `Car Suggester` →
+   `http://192.168.137.230:5000/suggest`, full canvas size,
+   "Shutdown source when not visible" OFF. Check with `/suggest/test`.
+3. Stream Deck: 10 buttons using the built-in **Website** action with
+   "GET request in background" checked (so no browser opens over the game),
+   e.g. `http://192.168.137.230:5000/suggest/show?class=A&type=Dirt`.
+   Long-press (follow-up): same URL plus `&mode=unraced`.
+4. First live session: tune `SUGGEST_SHOW_SECONDS` to the car-select timer.
+
+**Deferred display options (discussed 2026-10-17, not built):** posting a
+short top 3 to chat via Streamer.bot (Twitch 500 / YouTube 200 char limits
+rule out all 10); showing it on the Xeneon Edge under stream chat (depends
+on whether chat there is an iCUE widget or a browser window - a combined
+chat + suggester "cockpit" page is possible for the latter); PowerToys
+"Always On Top" (Win+Ctrl+T) to keep `/monitor` from getting buried on the
+small monitor (`/monitor` now includes the suggester as a third panel).
+
+**Original detection-based scoping (2026-09-12), still the long-term idea:**
 Suggests which car(s) to pick, before you commit, for whatever track/class
 is coming up next — a companion to the record-alert overlay but for the
-start of a race instead of the end. Not started; this is a scoping note to
-make the eventual build session fast, not a build in progress.
+start of a race instead of the end.
 
 **The core problem, worked out in a brainstorm 2026-09-12:** unlike the
 record alert (fine to fire a few seconds after the race ends), a suggestion

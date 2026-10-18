@@ -46,6 +46,22 @@ CAR_IMAGES_FOLDER       = r"C:\StreamAssistant\ai-computer\overlay\car_images"
 CAR_CARD_DEFAULT_IMAGE  = r"C:\StreamAssistant\ai-computer\overlay\car_images\default_shadow.svg"
 CAR_CARD_SOUND_FILE     = r"C:\StreamAssistant\ai-computer\overlay\rev.mp3"
 
+# --- Stream Overlay (car suggester) ---
+# Stream Deck buttons (one per Class + Road/Dirt) call /suggest/show on
+# controller.py, which runs suggest_cars.py to rank that Class/Type's cars
+# from the Cars tab and write SUGGEST_STATE_FILE; the page at /suggest
+# shows the list. Separate Browser Source from the other two overlays.
+# These settings are read fresh on every button press (suggest_cars.py is a
+# new subprocess each time), so tuning them needs no controller.py restart.
+SUGGEST_HTML            = r"C:\StreamAssistant\ai-computer\overlay\suggest.html"
+SUGGEST_STATE_FILE      = r"C:\StreamAssistant\ai-computer\overlay\suggest_state.json"
+SUGGEST_COUNT           = 10     # how many cars the list shows
+SUGGEST_SHOW_SECONDS    = 25     # how long it stays up - match it to the car-select window so it's gone before the race starts
+# Ranking knobs - see suggest_cars.py's rank_cars() for how they combine.
+SUGGEST_PRIOR_RACES     = 5      # small-sample damping: a car's win rate is blended with the group average as if it had this many extra races
+SUGGEST_RECORD_BONUS    = 0.03   # added to the score per Best by Track+Class record the car holds in this class
+SUGGEST_EXCLUDE_FAV     = ("M", "N")   # Fav flags never suggested: Meta, Not favorite
+
 # --- Personal monitor dashboard (not an OBS source) ---
 # Stacks both overlay pages (record alert on top, car card below) in one
 # page via iframes, for the streamer's own second-monitor viewing - not
@@ -74,6 +90,7 @@ OBS_WS_HOST             = GAMING_PC_IP
 OBS_WS_PORT             = 4455
 OBS_OVERLAY_SOURCE      = "Record Alert"
 OBS_CAR_CARD_SOURCE     = "Car Card"
+OBS_SUGGEST_SOURCE      = "Car Suggester"
 ENV_FILE                = r"C:\StreamAssistant\ai-computer\credentials\.env"
 
 # --- New-record chat post (Streamer.bot on the gaming PC) ---

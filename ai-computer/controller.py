@@ -22,7 +22,9 @@ from config import (CONTROLLER_PORT, GAMING_PC_IP, CAPTURE_AGENT_PORT, LOGS_FOLD
                      OVERLAY_FOLDER, OVERLAY_HTML, OVERLAY_STATE_FILE, OVERLAY_SOUND_FILE,
                      CAR_CARD_HTML, CAR_CARD_STATE_FILE, CAR_IMAGES_FOLDER, CAR_CARD_DEFAULT_IMAGE,
                      CAR_CARD_SOUND_FILE, CAR_ORDINALS_FILE, MONITOR_HTML,
+                     SUGGEST_HTML, SUGGEST_STATE_FILE,
                      OBS_WS_HOST, OBS_WS_PORT, OBS_OVERLAY_SOURCE, OBS_CAR_CARD_SOURCE,
+                     OBS_SUGGEST_SOURCE,
                      ENV_FILE, STREAMERBOT_HTTP_PORT, STREAMERBOT_RECORD_ACTION)
 
 SYNC_ORDINALS_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_ordinals.py"
@@ -30,6 +32,7 @@ SYNC_CAR_NAMES_SCRIPT = r"C:\StreamAssistant\ai-computer\sync_car_names_from_she
 TEST_CAR_CARD_SCRIPT = r"C:\StreamAssistant\ai-computer\test_car_card.py"
 EXPORT_UNMATCHED_SCRIPT = r"C:\StreamAssistant\ai-computer\export_unmatched_ordinals.py"
 APPLY_ORDINAL_MATCHES_SCRIPT = r"C:\StreamAssistant\ai-computer\apply_ordinal_matches.py"
+SUGGEST_CARS_SCRIPT = r"C:\StreamAssistant\ai-computer\suggest_cars.py"
 
 # Log files this instance will hand back over /logs - an allowlist, not a
 # free-form path, so this can never be used to read arbitrary files.
@@ -176,6 +179,7 @@ OBS_PLACEHOLDER_PASSWORD   = "CHANGE_ME"
 OVERLAY_PAGES = {
     "overlay":  {"state_file": OVERLAY_STATE_FILE,  "obs_source": OBS_OVERLAY_SOURCE},
     "car_card": {"state_file": CAR_CARD_STATE_FILE, "obs_source": OBS_CAR_CARD_SOURCE},
+    "suggest":  {"state_file": SUGGEST_STATE_FILE,  "obs_source": OBS_SUGGEST_SOURCE},
 }
 
 _acks      = {}     # (page, event timestamp) -> {"shown": bool, "age": int|None, "at": float}
@@ -309,7 +313,7 @@ def _check_ack(page, ts):
 
 def _watch_state_files():
     """
-    Background thread: spots every write to either overlay state file by
+    Background thread: spots every write to any overlay state file by
     mtime (same approach as _sse_stream()) and starts an ack check for it.
     Watching the files rather than hooking each writer is deliberate - the
     record alert is written by main.py, a separate process, so this is the
@@ -423,6 +427,31 @@ def _find_orphaned_pipeline_pid():
     except Exception as e:
         log.error(f"Failed to check OS for an orphaned pipeline process: {e}")
         return None
+
+
+def _current_game():
+    """
+    Which game the running pipeline was started with, read from main.py's
+    own command line (--game FH5|FH6) via the OS - same ask-the-OS-not-memory
+    approach as _find_orphaned_pipeline_pid(), so it survives a controller.py
+    restart. Returns None if no pipeline is running or the flag isn't found.
+    """
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
+             "Where-Object { $_.CommandLine -like '*main.py*' } | "
+             "Select-Object -First 1 -ExpandProperty CommandLine)"],
+            capture_output=True, text=True, timeout=10
+        )
+        parts = result.stdout.split()
+        if "--game" in parts:
+            game = parts[parts.index("--game") + 1].strip('"').upper()
+            if game in ("FH5", "FH6"):
+                return game
+    except Exception as e:
+        log.error(f"Failed to read the running pipeline's game from the OS: {e}")
+    return None
 
 
 def is_running():
@@ -968,6 +997,133 @@ def car_card_trigger():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/suggest", methods=["GET"])
+def suggest_page():
+    """
+    Serves the Car Suggester overlay page - its own OBS Browser Source
+    ("Car Suggester", see config.py's OBS_SUGGEST_SOURCE), separate from
+    /overlay and /car_card.
+    """
+    return send_file(SUGGEST_HTML)
+
+
+@app.route("/suggest/state", methods=["GET"])
+def suggest_state():
+    """Current suggester event as JSON ({} if none yet) - for manual/curl checks."""
+    if not os.path.exists(SUGGEST_STATE_FILE):
+        return jsonify({})
+    try:
+        with open(SUGGEST_STATE_FILE) as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+        log.warning(f"Could not read suggest state file: {e}")
+        return jsonify({})
+
+
+@app.route("/suggest/stream", methods=["GET"])
+def suggest_stream():
+    """Server-Sent Events for suggest.html - same _sse_stream() as the other overlays."""
+    return Response(_sse_stream(SUGGEST_STATE_FILE), mimetype="text/event-stream")
+
+
+@app.route("/suggest/show", methods=["GET"])
+def suggest_show():
+    """
+    Stream Deck target for the Car Suggester - one button per Class and
+    surface: /suggest/show?class=A&type=Dirt. Runs suggest_cars.py (fresh
+    Cars tab read every press, so Races/Wins from tonight's races count) as
+    a subprocess, which writes suggest_state.json; _sse_stream() then pushes
+    it to the page like any other overlay event.
+
+    ?mode=unraced lists owned cars in that Class/Type with no races yet
+    instead of ranking raced ones - meant for a long-press on the same
+    button. ?game=FH5|FH6 overrides the game, which otherwise comes from the
+    running pipeline's --game flag (FH6 if the pipeline isn't running), so
+    the buttons themselves never need to know which game is up.
+    """
+    cls = request.args.get("class", "").strip().upper()
+    car_type = request.args.get("type", "").strip().capitalize()
+    mode = request.args.get("mode", "ranked").lower()
+    if not cls or car_type not in ("Road", "Dirt"):
+        return jsonify({"status": "error", "message": "class is required and type must be Road or Dirt"}), 400
+    if mode not in ("ranked", "unraced"):
+        return jsonify({"status": "error", "message": "mode must be ranked or unraced"}), 400
+
+    game = request.args.get("game", "").upper() or _current_game() or "FH6"
+    if game not in ("FH5", "FH6"):
+        return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+
+    started = time.time()
+    try:
+        result = subprocess.run(
+            [PYTHON_EXE, SUGGEST_CARS_SCRIPT, cls, car_type, game, mode],
+            cwd=r"C:\StreamAssistant\ai-computer",
+            capture_output=True, text=True, timeout=30
+        )
+        try:
+            parsed = json.loads(result.stdout.strip())
+        except (ValueError, AttributeError):
+            log.error(f"suggest_cars.py did not return valid JSON: {result.stderr.strip()}")
+            return jsonify({
+                "status": "error",
+                "message": "suggest_cars.py did not return valid JSON",
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip()
+            }), 500
+        elapsed = time.time() - started
+        if parsed.get("status") != "ok":
+            log.error(f"Car Suggester failed for {cls} {car_type} ({game}, {mode}): {parsed.get('message')}")
+            return jsonify(parsed), 500
+        names = [c["name"] for c in parsed["event"]["cars"]]
+        log.info(f"Car Suggester: {cls} {car_type} ({game}, {mode}) in {elapsed:.1f}s -> {names}")
+        return jsonify(parsed)
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "suggest_cars.py timed out"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/suggest/test", methods=["GET"])
+def suggest_test():
+    """
+    Writes a canned suggester event (no Sheets read) to check the page,
+    layout and timing in OBS without real data. ?count=N (default 10) and
+    ?show_seconds=N override the list length and display time.
+    """
+    try:
+        count = max(1, min(int(request.args.get("count", 10)), 25))
+        show_seconds = max(1, int(request.args.get("show_seconds", 25)))
+    except ValueError:
+        return jsonify({"status": "error", "message": "count and show_seconds must be numbers"}), 400
+    cars = []
+    for i in range(count):
+        races = 30 - i * 2
+        wins = max(0, 18 - i * 2)
+        cars.append({
+            "name": f"20{10 + i} Test Motors Model {i + 1}", "car_name": f"Model {i + 1}",
+            "tuner": "Benny" if i % 2 == 0 else "", "tune": "", "fav": "Y" if i == 0 else "",
+            "races": races, "wins": wins, "win_rate": round(wins / races, 4),
+            "records": 3 if i == 0 else (1 if i == 2 else 0), "score": 0,
+        })
+    event = {
+        "class": request.args.get("class", "A").upper(), "type": request.args.get("type", "Dirt").capitalize(),
+        "game": "FH6", "mode": "ranked", "total": count + 4, "cars": cars,
+        "show_seconds": show_seconds, "test": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+        tmp_path = SUGGEST_STATE_FILE + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(event, f)
+        os.replace(tmp_path, SUGGEST_STATE_FILE)
+        log.info(f"Test suggester event written ({count} cars, {show_seconds}s)")
+        return jsonify({"status": "ok", "event": event})
+    except Exception as e:
+        log.error(f"Failed to write test suggester event: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/overlay/test", methods=["GET"])
 def overlay_test():
     """
@@ -1008,7 +1164,7 @@ def overlay_ack():
     """
     Render acknowledgement from an overlay page - see the "Render
     acknowledgements + OBS auto-refresh" section above.
-    ?page=overlay|car_card (allowlist) &ts=<event timestamp> &obs=0|1
+    ?page=overlay|car_card|suggest (allowlist) &ts=<event timestamp> &obs=0|1
     &shown=0|1 &age=<ms the page computed the event's age as>.
     Only obs=1 acks count toward the auto-refresh decision; /monitor's
     (obs=0) are logged for comparison but otherwise ignored.
@@ -1016,7 +1172,7 @@ def overlay_ack():
     page = request.args.get("page", "")
     ts = request.args.get("ts", "")
     if page not in OVERLAY_PAGES or not ts:
-        return jsonify({"status": "error", "message": "page must be overlay|car_card and ts is required"}), 400
+        return jsonify({"status": "error", "message": "page must be overlay|car_card|suggest and ts is required"}), 400
 
     is_obs = request.args.get("obs") == "1"
     shown = request.args.get("shown") == "1"
@@ -1064,13 +1220,13 @@ def obs_status():
 def obs_refresh():
     """
     Manually presses refresh on one overlay's Browser Source in OBS -
-    ?page=overlay|car_card (allowlist, never a free-form source name). Goes
+    ?page=overlay|car_card|suggest (allowlist, never a free-form source name). Goes
     through the same rate limit as auto-refresh. For verifying the
     obs-websocket path end to end without waiting for a missed event.
     """
     page = request.args.get("page", "")
     if page not in OVERLAY_PAGES:
-        return jsonify({"status": "error", "message": "page must be overlay|car_card"}), 400
+        return jsonify({"status": "error", "message": "page must be overlay|car_card|suggest"}), 400
     ok, msg = _refresh_obs_source(page, "manual /obs/refresh")
     return jsonify({"status": "ok" if ok else "error", "message": msg}), (200 if ok else 503)
 
