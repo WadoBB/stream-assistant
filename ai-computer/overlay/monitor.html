@@ -31,6 +31,11 @@
      its ?fit=1 mode shrinks it to fit that. */
   iframe.card { flex: 0 0 180px; }
   iframe.list { flex: 1 1 auto; min-height: 0; }
+
+  /* While the suggester list is up, it takes over the whole window so it
+     stays readable - the cards still fire on stream, just not here for
+     those few seconds. Toggled by the message listener below. */
+  body.suggesting iframe.card { flex-basis: 0; min-height: 0; height: 0; border-bottom: none; }
 </style>
 </head>
 <body>
@@ -54,6 +59,15 @@
   <iframe class="card" src="/car_card?muted=1"></iframe>
   <iframe class="list" src="/suggest?fit=1"></iframe>
 </div>
+
+<script>
+  // suggest.html (loaded with ?fit=1) posts {suggest: 'show'|'hide'} when
+  // its list appears and disappears.
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || !e.data.suggest) return;
+    document.body.classList.toggle('suggesting', e.data.suggest === 'show');
+  });
+</script>
 
 </body>
 </html>

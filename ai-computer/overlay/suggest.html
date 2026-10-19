@@ -153,9 +153,14 @@
   const FIT = new URLSearchParams(location.search).has('fit');
   if (FIT) document.body.classList.add('fit');
 
-  // The OBS copy sits on a full-size canvas, but /monitor gives this page a
-  // short panel under the two cards, where a 10-car list gets cut off.
-  // Shrink the whole panel (never enlarge) to fit whatever space it has.
+  // The OBS copy sits on a full-size canvas, but on /monitor this page
+  // shares the window with the two cards. While the list is up, /monitor
+  // collapses the cards and gives this frame the whole window (see
+  // tellMonitor()), then this shrinks the panel (never enlarges it) to fit.
+  // MIN_FIT_ZOOM keeps the type readable mid-game: on a window too short
+  // even for that, the bottom of the list gets cut off rather than shrunk
+  // into unreadable text.
+  const MIN_FIT_ZOOM = 0.7;
   function fitToFrame() {
     if (!FIT) return;
     const panel = document.getElementById('suggest');
@@ -163,9 +168,20 @@
     const scale = Math.min(1,
       (window.innerHeight - 16) / panel.offsetHeight,
       (window.innerWidth - 16) / panel.offsetWidth);
-    panel.style.zoom = Math.max(0.3, scale);
+    panel.style.zoom = Math.max(MIN_FIT_ZOOM, scale);
   }
+  // The frame growing when /monitor hands it the whole window fires this,
+  // which is what scales the list back up after the takeover.
   window.addEventListener('resize', fitToFrame);
+
+  function tellMonitor(showing) {
+    if (FIT && window.parent !== window) {
+      window.parent.postMessage({ suggest: showing ? 'show' : 'hide' }, location.origin);
+    }
+  }
+  // A reload (e.g. the 10-minute self-refresh) mustn't leave /monitor
+  // stuck with the cards collapsed.
+  tellMonitor(false);
 
   let lastTimestamp = null;
   let hideTimer = null;
@@ -243,10 +259,14 @@
     fill.style.transform = 'scaleX(0)';
 
     const panel = document.getElementById('suggest');
+    tellMonitor(true);
     fitToFrame();
     panel.classList.add('show');
     clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => panel.classList.remove('show'), showMs);
+    hideTimer = setTimeout(() => {
+      panel.classList.remove('show');
+      tellMonitor(false);
+    }, showMs);
   }
 
   const WATCHDOG_MS = 8000;

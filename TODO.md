@@ -341,7 +341,11 @@ chat + suggester "cockpit" page is possible for the latter); PowerToys
 small monitor (`/monitor` now includes the suggester as a third panel;
 fixed 2026-10-19 after it got cut off at the old equal-thirds height - the
 two cards now get 180px each and the list takes the rest, shrinking itself
-via `?fit=1` to fit).
+via `?fit=1` to fit). That made the type too small to read mid-game, so
+the same day the list was changed to take over the whole monitor window
+while it's showing (cards collapse, return when it hides), with a 0.7
+minimum scale. Trade-off accepted by the user: the Car Card isn't visible
+on the monitor during those seconds; it still shows on stream.
 
 **Original detection-based scoping (2026-09-12), still the long-term idea:**
 Suggests which car(s) to pick, before you commit, for whatever track/class
