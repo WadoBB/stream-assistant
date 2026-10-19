@@ -110,6 +110,16 @@
   li.rest .name { font-size: 14px; }
   li.rest .rank { font-size: 14px; }
 
+  /* ?fit=1 (used by /monitor): pinned to the frame's top-left and scaled
+     down by fitToFrame() so the whole list shows in a short panel. */
+  body.fit #suggest {
+    top: 8px;
+    right: auto;
+    left: 8px;
+    transform: none;
+    transition: opacity 0.4s ease;
+  }
+
   #sg-empty {
     font-size: 14px;
     opacity: 0.75;
@@ -139,6 +149,23 @@
   // car-select window without touching this page or the other overlays.
   const DEFAULT_SHOW_S = 25;
   const TOP_N = 3;
+  // /monitor loads this page with ?fit=1 - see fitToFrame().
+  const FIT = new URLSearchParams(location.search).has('fit');
+  if (FIT) document.body.classList.add('fit');
+
+  // The OBS copy sits on a full-size canvas, but /monitor gives this page a
+  // short panel under the two cards, where a 10-car list gets cut off.
+  // Shrink the whole panel (never enlarge) to fit whatever space it has.
+  function fitToFrame() {
+    if (!FIT) return;
+    const panel = document.getElementById('suggest');
+    panel.style.zoom = 1;
+    const scale = Math.min(1,
+      (window.innerHeight - 16) / panel.offsetHeight,
+      (window.innerWidth - 16) / panel.offsetWidth);
+    panel.style.zoom = Math.max(0.3, scale);
+  }
+  window.addEventListener('resize', fitToFrame);
 
   let lastTimestamp = null;
   let hideTimer = null;
@@ -216,6 +243,7 @@
     fill.style.transform = 'scaleX(0)';
 
     const panel = document.getElementById('suggest');
+    fitToFrame();
     panel.classList.add('show');
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => panel.classList.remove('show'), showMs);

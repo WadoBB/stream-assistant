@@ -298,7 +298,8 @@ treated as working but still being watched, not yet declared closed.
   = page never painted it; ack with `shown=0` = page rejected it (negative
   age = clock skew between the PCs).
 - **`/monitor`** (`controller.py`, serving `ai-computer/overlay/monitor.html`)
-  stacks both overlays (record alert on top, Car Card below) via iframes
+  stacks the overlays (record alert, Car Card, then the Car Suggester, which
+  gets the remaining height and loads with `?fit=1` to shrink itself to fit) via iframes
   for the streamer's own second-screen viewing — not an OBS Browser Source
   itself, just a way to see live whether the overlays actually fired.
   `ai-computer/open_stream_monitor.bat` opens it as a small positioned

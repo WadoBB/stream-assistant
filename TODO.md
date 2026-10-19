@@ -338,7 +338,10 @@ rule out all 10); showing it on the Xeneon Edge under stream chat (depends
 on whether chat there is an iCUE widget or a browser window - a combined
 chat + suggester "cockpit" page is possible for the latter); PowerToys
 "Always On Top" (Win+Ctrl+T) to keep `/monitor` from getting buried on the
-small monitor (`/monitor` now includes the suggester as a third panel).
+small monitor (`/monitor` now includes the suggester as a third panel;
+fixed 2026-10-19 after it got cut off at the old equal-thirds height - the
+two cards now get 180px each and the list takes the rest, shrinking itself
+via `?fit=1` to fit).
 
 **Original detection-based scoping (2026-09-12), still the long-term idea:**
 Suggests which car(s) to pick, before you commit, for whatever track/class
