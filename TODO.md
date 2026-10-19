@@ -332,6 +332,13 @@ controller, NOT yet against the real sheet or in OBS):**
    Long-press (follow-up): same URL plus `&mode=unraced`.
 4. First live session: tune `SUGGEST_SHOW_SECONDS` to the car-select timer.
 
+**Button lag (2026-10-19):** measured ~5-6s from press to list. Fixed the
+cheap parts the same day: an instant LOADING panel, remembering the game
+instead of a PowerShell lookup per press, and a 0.2s SSE poll. Still open
+if it feels slow: batch the two Sheets reads into one call and drop the
+`anthropic` import chain from `suggest_cars.py` (~1s), or keep a warm
+worker process so a press skips Python/Google startup entirely.
+
 **Deferred display options (discussed 2026-10-17, not built):** posting a
 short top 3 to chat via Streamer.bot (Twitch 500 / YouTube 200 char limits
 rule out all 10); showing it on the Xeneon Edge under stream chat (depends

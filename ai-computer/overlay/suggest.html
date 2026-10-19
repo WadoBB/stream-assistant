@@ -221,13 +221,21 @@
   function showList(event, ageMs) {
     const unraced = event.mode === 'unraced';
     const cars = event.cars || [];
+    // controller.py writes a "loading" event the instant the button is
+    // pressed (the Sheets lookup takes a couple of seconds) and an "error"
+    // one if that lookup fails, so a press always gets visible feedback.
+    const status = event.status || 'ready';
+    const label = status === 'loading' ? 'LOADING…'
+      : status === 'error' ? 'NO LIST'
+      : unraced ? 'UNRACED' : `TOP ${cars.length}`;
     document.getElementById('sg-title').textContent =
-      `${event.class} ${String(event.type || '').toUpperCase()} · ` +
-      (unraced ? 'UNRACED' : `TOP ${cars.length}`);
+      `${event.class} ${String(event.type || '').toUpperCase()} · ${label}`;
     document.getElementById('sg-subtitle').textContent =
-      (event.test ? 'TEST · ' : '') +
-      (unraced ? `${event.total} owned, not yet raced` : `ranked from ${event.total} raced cars`) +
-      (unraced ? '' : ' · Meta & Not-favorite excluded');
+      status === 'loading' ? 'Reading the Cars tab…'
+      : status === 'error' ? 'The lookup failed - see /logs?file=controller'
+      : (event.test ? 'TEST · ' : '') +
+        (unraced ? `${event.total} owned, not yet raced` : `ranked from ${event.total} raced cars`) +
+        (unraced ? '' : ' · Meta & Not-favorite excluded');
 
     const list = document.getElementById('sg-list');
     list.replaceChildren();
@@ -243,20 +251,25 @@
     });
 
     const empty = document.getElementById('sg-empty');
-    empty.hidden = cars.length > 0;
-    empty.textContent = unraced
+    empty.hidden = cars.length > 0 || status === 'loading';
+    empty.textContent = status === 'error' ? (event.message || 'Unknown error')
+      : unraced
       ? `No unraced ${event.class} ${event.type} cars on the Cars tab.`
       : `No raced ${event.class} ${event.type} cars yet (Meta/Not-favorite excluded).`;
 
     // Time left counts from when the button was pressed, not when this page
     // got it, so a slow push doesn't keep the list up into the race.
     const showMs = Math.max(1000, (event.show_seconds || DEFAULT_SHOW_S) * 1000 - Math.max(0, ageMs));
+    // The countdown only starts once the real list is up; while loading the
+    // bar just sits full.
     const fill = document.getElementById('sg-timer-fill');
     fill.style.transition = 'none';
     fill.style.transform = 'scaleX(1)';
     void fill.offsetWidth;   // restart the countdown bar from full
-    fill.style.transition = `transform ${showMs}ms linear`;
-    fill.style.transform = 'scaleX(0)';
+    if (status !== 'loading') {
+      fill.style.transition = `transform ${showMs}ms linear`;
+      fill.style.transform = 'scaleX(0)';
+    }
 
     const panel = document.getElementById('suggest');
     tellMonitor(true);

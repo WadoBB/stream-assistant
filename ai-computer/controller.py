@@ -80,11 +80,12 @@ pipeline_process = None
 pipeline_lock    = threading.Lock()
 
 
-def _sse_stream(state_file_path):
+def _sse_stream(state_file_path, poll_s=1.0):
     """
     Server-Sent Events generator: watches state_file_path for changes (by
-    modification time, checked every second in a plain server-side loop) and
-    pushes its contents the moment it changes.
+    modification time, checked every poll_s seconds in a plain server-side
+    loop) and pushes its contents the moment it changes. Pings still go out
+    about once a second regardless of poll_s.
 
     This replaced client-side polling (a page repeatedly fetching /overlay
     or /car_card state on a setTimeout loop) after both overlays proved
@@ -103,6 +104,7 @@ def _sse_stream(state_file_path):
     than patching around it again.
     """
     last_mtime = None
+    last_ping = 0.0
     while True:
         try:
             if os.path.exists(state_file_path):
@@ -136,14 +138,17 @@ def _sse_stream(state_file_path):
                     # a plain invisible comment, but a long-lived connection
                     # could still end up in a stuck state the browser's own
                     # EventSource reconnection didn't reliably catch.
-                    yield "event: ping\ndata: {}\n\n"
-            else:
+                    if time.time() - last_ping >= 1.0:
+                        last_ping = time.time()
+                        yield "event: ping\ndata: {}\n\n"
+            elif time.time() - last_ping >= 1.0:
+                last_ping = time.time()
                 yield "event: ping\ndata: {}\n\n"
         except GeneratorExit:
             raise
         except Exception as e:
             log.error(f"SSE stream error for {state_file_path}: {e}")
-        time.sleep(1)
+        time.sleep(poll_s)
 
 
 # =============================================================
@@ -454,6 +459,21 @@ def _current_game():
     return None
 
 
+# Which game the pipeline is running, remembered so a Car Suggester press
+# doesn't pay for _current_game()'s PowerShell call (1-2s) every time.
+# /toggle sets it on every start/stop; until then (i.e. right after a
+# controller.py restart) the first press asks the OS once and keeps the
+# answer - the ask-the-OS-not-memory rule above, applied only when memory
+# genuinely doesn't know.
+_pipeline_game = {"known": False, "game": None}
+
+
+def _running_game():
+    if not _pipeline_game["known"]:
+        _pipeline_game.update(known=True, game=_current_game())
+    return _pipeline_game["game"]
+
+
 def is_running():
     """
     Checks whether the pipeline is actually running - first the fast path
@@ -501,6 +521,7 @@ def toggle():
                     pipeline_process.kill()
 
             pipeline_process = None
+            _pipeline_game.update(known=True, game=None)
             log.info("Pipeline stopped")
             return jsonify({"status": "stopped", "message": "Stream Assistant stopped"})
 
@@ -512,6 +533,7 @@ def toggle():
                     cwd=r"C:\StreamAssistant\ai-computer",
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
+                _pipeline_game.update(known=True, game=game)
                 log.info(f"Pipeline started (PID: {pipeline_process.pid}, game: {game})")
                 return jsonify({
                     "status":   "running",
@@ -1022,8 +1044,13 @@ def suggest_state():
 
 @app.route("/suggest/stream", methods=["GET"])
 def suggest_stream():
-    """Server-Sent Events for suggest.html - same _sse_stream() as the other overlays."""
-    return Response(_sse_stream(SUGGEST_STATE_FILE), mimetype="text/event-stream")
+    """
+    Server-Sent Events for suggest.html - same _sse_stream() as the other
+    overlays, but checking 5x a second instead of once: the list is needed
+    before car select closes, and the once-a-second check alone was up to a
+    full second of the button-to-list lag.
+    """
+    return Response(_sse_stream(SUGGEST_STATE_FILE, poll_s=0.2), mimetype="text/event-stream")
 
 
 @app.route("/suggest/show", methods=["GET"])
@@ -1049,9 +1076,21 @@ def suggest_show():
     if mode not in ("ranked", "unraced"):
         return jsonify({"status": "error", "message": "mode must be ranked or unraced"}), 400
 
-    game = request.args.get("game", "").upper() or _current_game() or "FH6"
+    game = request.args.get("game", "").upper() or _running_game() or "FH6"
     if game not in ("FH5", "FH6"):
         return jsonify({"status": "error", "message": f"Unknown game version: {game}"}), 400
+
+    # Show the panel right away with a LOADING header - the Sheets lookup
+    # below takes a couple of seconds, and without this a press gave no sign
+    # it had registered (or which button it was) until the list arrived.
+    base = {"class": cls, "type": car_type, "game": game, "mode": mode, "total": 0, "cars": []}
+    _write_suggest_state(dict(base, status="loading", show_seconds=SUGGEST_LOADING_SECONDS))
+
+    def fail(message, code=500, **extra):
+        log.error(f"Car Suggester failed for {cls} {car_type} ({game}, {mode}): {message}")
+        _write_suggest_state(dict(base, status="error", message=message,
+                                  show_seconds=SUGGEST_ERROR_SECONDS))
+        return jsonify(dict({"status": "error", "message": message}, **extra)), code
 
     started = time.time()
     try:
@@ -1063,24 +1102,35 @@ def suggest_show():
         try:
             parsed = json.loads(result.stdout.strip())
         except (ValueError, AttributeError):
-            log.error(f"suggest_cars.py did not return valid JSON: {result.stderr.strip()}")
-            return jsonify({
-                "status": "error",
-                "message": "suggest_cars.py did not return valid JSON",
-                "stdout": result.stdout.strip(),
-                "stderr": result.stderr.strip()
-            }), 500
+            return fail("suggest_cars.py did not return valid JSON",
+                        stdout=result.stdout.strip(), stderr=result.stderr.strip())
         elapsed = time.time() - started
         if parsed.get("status") != "ok":
-            log.error(f"Car Suggester failed for {cls} {car_type} ({game}, {mode}): {parsed.get('message')}")
-            return jsonify(parsed), 500
+            return fail(parsed.get("message") or "suggest_cars.py failed")
         names = [c["name"] for c in parsed["event"]["cars"]]
         log.info(f"Car Suggester: {cls} {car_type} ({game}, {mode}) in {elapsed:.1f}s -> {names}")
         return jsonify(parsed)
     except subprocess.TimeoutExpired:
-        return jsonify({"status": "error", "message": "suggest_cars.py timed out"}), 500
+        return fail("suggest_cars.py timed out")
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return fail(str(e))
+
+
+SUGGEST_LOADING_SECONDS = 15   # safety net only - the real list replaces it within a few seconds
+SUGGEST_ERROR_SECONDS   = 8
+
+
+def _write_suggest_state(event):
+    """Writes suggest_state.json (temp-then-rename) with a fresh timestamp."""
+    event["timestamp"] = datetime.now(timezone.utc).isoformat()
+    try:
+        os.makedirs(OVERLAY_FOLDER, exist_ok=True)
+        tmp_path = SUGGEST_STATE_FILE + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(event, f)
+        os.replace(tmp_path, SUGGEST_STATE_FILE)
+    except Exception as e:
+        log.error(f"Failed to write suggest state: {e}")
 
 
 @app.route("/suggest/test", methods=["GET"])

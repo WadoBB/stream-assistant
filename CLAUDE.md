@@ -326,9 +326,19 @@ options (chat, Xeneon).
   writes `overlay/suggest_state.json`; `/suggest` is the page, with the same
   SSE / watchdog / ack / OBS auto-refresh setup as the other two overlays
   (OBS source name `Car Suggester`).
-- The game comes from the running `main.py`'s `--game` flag, read from the
-  OS (`_current_game()`, same ask-the-OS pattern as `is_running()`), so the
-  buttons don't need FH5/FH6 variants. Falls back to FH6.
+- The game comes from the running `main.py`'s `--game` flag, so the
+  buttons don't need FH5/FH6 variants (falls back to FH6). `/toggle`
+  records it in `_pipeline_game`; only when that's unknown (right after a
+  `controller.py` restart) does `_running_game()` ask the OS once via
+  `_current_game()` - asking every press cost 1-2s of PowerShell startup.
+- **Lag (measured 2026-10-19 from `/logs`):** ~5-6s button-to-list, mostly
+  the per-press subprocess (Python start + Google libs + auth + two tab
+  reads, ~2.7s). Mitigated: the route writes a `status: "loading"` state
+  before starting the lookup so the panel appears instantly ("A DIRT ·
+  LOADING…"), and `status: "error"` if it fails; `/suggest/stream` polls
+  at 0.2s instead of 1s. Not done yet: one batched Sheets read and skipping
+  the unneeded `anthropic` import chain (~2.7s → ~1.5s), or a warm
+  long-running worker if that's still too slow.
 - Fav `M` (Meta) and `N` (Not favorite: uncompetitive or just not fun to
   drive) are never suggested. Ranking is win rate damped toward the group
   average for small samples plus a bonus per Track+Class record. Knobs,
