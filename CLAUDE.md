@@ -709,7 +709,6 @@ differences on the first FH6 play session.
 - **FH6 detection tuning** — scoreboard detection values for FH6 are from pre-release screenshots; verify and tune against live FH6 gameplay (check capture_agent.log for pixel counts)
 - **FH6 telemetry offsets** — packet structure assumed unchanged from FH5; verify on first live session using packet samples
 - **Online/AI race flag** — planned Results tab column to distinguish Open online races from AI races, enabling separate win-rate tracking
-- **Car Suggester long-press (unraced cars)** — `?mode=unraced` is built; only the Stream Deck long-press wiring is left
 - **Stream overlays — race summary at race end** still not built. The record alert and Car Card (car stats on car change, via `car_ordinal` in telemetry) are both built and working live — see their sections above.
 - **Module 5: Chat moderation** — Claude API reading Twitch/YouTube chat simultaneously; deferred until streaming is established
 - **Stream Deck button color change** — dynamic green/red state indicator, tracked separately

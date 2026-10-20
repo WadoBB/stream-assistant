@@ -294,6 +294,8 @@ above) is still unverified.
 PowerToys Always On Top for `/monitor`). First live stream is Thursday
 2026-10-22 - after it, tune `SUGGEST_SHOW_SECONDS` to the real car-select
 window and decide whether the ~3s list lag needs the faster lookup below.
+Long-press unraced mode is wired up too (seen in the 2026-10-19 test
+presses), and lookups ran a steady 2.3-2.7s each in that test.
 
 **Why it exists:** twice in one night the user raced three races in the
 wrong car - once from running out of car-select time, once from picking a
