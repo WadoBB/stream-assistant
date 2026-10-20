@@ -288,7 +288,13 @@ unchanged. Confirmed quiet by the user. The volume is now controlled in
 OBS, but whether the sounds sit on their own mixer channel (the item
 above) is still unverified.
 
-### Car Suggester — button version built 2026-10-17, needs AI Computer + OBS + Stream Deck setup
+### Car Suggester — button version built 2026-10-17, set up and confirmed working 2026-10-20
+**2026-10-20:** user confirmed everything working (AI Computer, OBS
+`Car Suggester` source, Stream Deck Website action with background GET,
+PowerToys Always On Top for `/monitor`). First live stream is Thursday
+2026-10-22 - after it, tune `SUGGEST_SHOW_SECONDS` to the real car-select
+window and decide whether the ~3s list lag needs the faster lookup below.
+
 **Why it exists:** twice in one night the user raced three races in the
 wrong car - once from running out of car-select time, once from picking a
 road car for a dirt race. The detection-based design below is still

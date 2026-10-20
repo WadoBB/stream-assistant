@@ -313,7 +313,9 @@ treated as working but still being watched, not yet declared closed.
   pending confirmation against the user's real monitor layout.
 
 ## Stream Overlay — Car Suggester
-Built 2026-10-17, not yet tested against the real sheet or in OBS. See
+Built 2026-10-17; confirmed working end to end (real sheet, OBS source,
+Stream Deck background GET, /monitor takeover) 2026-10-20, ahead of its
+first live stream. See
 TODO.md's Car Suggester entry for setup steps and the deferred display
 options (chat, Xeneon).
 
